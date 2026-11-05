@@ -31,6 +31,12 @@ The non-obvious decisions behind `server/tools/`, `server/answer.js`,
 
 ## Answers
 
+- Every agent request with choices accepts an optional note alongside a valid
+  selected option, including when `allow_free_text` is false. The flag controls
+  whether text can replace a choice. Fixed-choice requests still require a
+  valid option; invalid ids and notes over 4000 characters are rejected.
+  Notes are trimmed and blank notes become `null`.
+
 - **Answers go back with `host.deliver`, not mail.** Extension mail is sent as
   `ext:needsyou` and framed as an untrusted peer message that invites a
   `send_message` reply to an address that isn't a session.

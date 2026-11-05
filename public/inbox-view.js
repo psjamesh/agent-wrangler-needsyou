@@ -369,28 +369,26 @@ export function createInboxView(el, api, {
       wrap.appendChild(group);
     }
     const done = hasDone(item);
-    if (item.allowFreeText) {
-      const field = make('div', 'ibx-field');
-      const ta = make('textarea', 'ibx-text');
-      ta.id = `ibx-text-${item.id}`;
-      const label = make('label', 'ibx-text-label', item.options.length || done ? 'Add a note (optional)' : 'Your answer');
-      label.htmlFor = ta.id;
-      ta.rows = 3;
-      ta.maxLength = 4000;
-      ta.disabled = busy;
-      ta.dataset.ibxRole = 'text';
-      ta.value = drafts.get(item.id) || '';
-      ta.addEventListener('input', () => {
-        drafts.set(item.id, ta.value);
-        const send = detailEl.querySelector('.ibx-send');
-        if (send) send.disabled = busy || !answerPayload(item, { optionId: choices.get(item.id), text: ta.value });
-      });
-      ta.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); e.stopPropagation(); send(item); }
-      });
-      field.append(label, ta);
-      wrap.appendChild(field);
-    }
+    const field = make('div', 'ibx-field');
+    const ta = make('textarea', 'ibx-text');
+    ta.id = `ibx-text-${item.id}`;
+    const label = make('label', 'ibx-text-label', item.options.length || done ? 'Add a note (optional)' : 'Your answer');
+    label.htmlFor = ta.id;
+    ta.rows = 3;
+    ta.maxLength = 4000;
+    ta.disabled = busy;
+    ta.dataset.ibxRole = 'text';
+    ta.value = drafts.get(item.id) || '';
+    ta.addEventListener('input', () => {
+      drafts.set(item.id, ta.value);
+      const send = detailEl.querySelector('.ibx-send');
+      if (send) send.disabled = busy || !answerPayload(item, { optionId: choices.get(item.id), text: ta.value });
+    });
+    ta.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); e.stopPropagation(); send(item); }
+    });
+    field.append(label, ta);
+    wrap.appendChild(field);
     const actions = make('div', 'ibx-actions');
     if (done) {
       const doneBtn = button('ibx-primary ibx-done', 'Done', () => sendDone(item), { disabled: busy, title: 'Tell the agent it is done' });
@@ -401,7 +399,7 @@ export function createInboxView(el, api, {
     const sendBtn = button(`${done ? '' : 'ibx-primary '}ibx-send`, busy ? 'Sending…' : 'Send', () => send(item), { disabled: busy || !payload });
     sendBtn.dataset.ibxRole = 'send';
     actions.appendChild(sendBtn);
-    if (item.allowFreeText) actions.appendChild(make('span', 'ibx-hint', '⌘/Ctrl+Enter sends'));
+    actions.appendChild(make('span', 'ibx-hint', '⌘/Ctrl+Enter sends'));
     dismissControls(item, actions);
     wrap.appendChild(actions);
     return wrap;
@@ -765,6 +763,9 @@ export function createInboxView(el, api, {
   function update(nextGraph) {
     graph = nextGraph;
     items = inboxOf(graph)?.items ?? [];
+    for (const [id, choice] of choices) {
+      if (!byId(id)?.options.some((opt) => opt.id === choice)) choices.delete(id);
+    }
     const hadFocus = root.contains(doc.activeElement);
     order = queueOrder(items);
     closed = closedOrder(items);

@@ -30,8 +30,9 @@ This page has two parts:
 - A helper session (one that another session started) is refused, and the
   refusal names the session that started it. After `inbox-set-can-ask`, the
   same call succeeds. `allowed: null` sets the default again.
-- `inbox-answer` reaches `host.deliver`. The smoke test sends the answer only
-  to an archived card, which refuses it. So no session starts. The item stays
+- `inbox-answer` preserves a fixed-choice answer with an optional note and
+  reaches `host.deliver`. The smoke test sends the answer only to an archived
+  card, which refuses it. So no session starts. The item stays
   answered with a failed delivery. `inbox-retry` fails the same way and counts
   the attempt.
 - `inbox-dismiss` and `withdraw_human_request` close items. A session cannot

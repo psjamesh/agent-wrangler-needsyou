@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.11
+
+### Added
+
+- **Optional notes on every choice answer.** Add a note alongside any selected
+  option, including requests that require a fixed choice. A note alone still
+  requires the agent to allow a free-text answer.
+
 ## 0.1.10
 
 ### Added

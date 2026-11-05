@@ -133,9 +133,14 @@ test('answerPayload mirrors the store rules', () => {
   const opts = [{ id: 'yes', label: 'Yes' }, { id: 'no', label: 'No' }];
   const choiceOnly = item({ options: opts, allowFreeText: false });
   assert.equal(answerPayload(choiceOnly, {}), null);
-  assert.deepEqual(answerPayload(choiceOnly, { optionId: 'yes', text: 'ignored' }), { type: 'inbox-answer', id: choiceOnly.id, optionId: 'yes' });
+  assert.deepEqual(answerPayload(choiceOnly, { optionId: 'yes', text: ' because ' }), { type: 'inbox-answer', id: choiceOnly.id, optionId: 'yes', text: 'because' });
   assert.equal(answerPayload(choiceOnly, { optionId: 'nope' }), null);
+  assert.equal(answerPayload(choiceOnly, { text: 'note without a choice' }), null);
+  assert.deepEqual(answerPayload(choiceOnly, { optionId: 'yes', text: '  \n ' }), { type: 'inbox-answer', id: choiceOnly.id, optionId: 'yes' });
+  assert.equal(answerPayload(choiceOnly, { optionId: 'yes', text: 'x'.repeat(4001) }), null);
+  assert.equal(answerPayload(choiceOnly, { optionId: 'yes', text: 'x'.repeat(4000) }).text.length, 4000);
   const both = item({ options: opts, allowFreeText: true });
+  assert.equal(answerPayload(both, { optionId: 'nope', text: 'a note' }), null);
   assert.deepEqual(answerPayload(both, { optionId: 'no', text: ' because ' }), { type: 'inbox-answer', id: both.id, optionId: 'no', text: 'because' });
   assert.deepEqual(answerPayload(both, { text: 'neither' }), { type: 'inbox-answer', id: both.id, text: 'neither' });
   const text = item();

@@ -237,7 +237,9 @@ export function nextAfter(prevOrder, removedId, order) {
 // store's validateAnswer so the button can say so before a round trip).
 export function answerPayload(item, { optionId = null, text = '' } = {}) {
   const choice = optionId && item.options?.some((o) => o.id === optionId) ? optionId : null;
-  const note = item.allowFreeText ? String(text ?? '').trim() : '';
+  if (optionId && !choice) return null;
+  const note = String(text ?? '').trim();
+  if (!choice && !item.allowFreeText) return null;
   if (!choice && !note) return null;
   if (note.length > 4000) return null;
   return { type: 'inbox-answer', id: item.id, ...(choice ? { optionId: choice } : {}), ...(note ? { text: note } : {}) };

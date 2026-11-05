@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { inboxHandlers } from './index.js';
 import { MAX_DELIVERY_ATTEMPTS } from './answer.js';
-import { fakeHost, seq, clock } from '../test-helpers.js';
+import { fakeHost, seq, clock, tempStoreFile } from '../test-helpers.js';
 
 const handler = (type) => inboxHandlers.find((h) => h.type === type).handler;
 const answer = handler('inbox-answer');
@@ -35,6 +35,29 @@ test('inbox-answer with an option delivers it and resolves the item', async () =
   assert.equal(calls.rebuild, 1);
 });
 
+test('fixed-choice answers persist and deliver a note for every agent kind', async () => {
+  const file = tempStoreFile();
+  const { host, store, calls } = setup({ file });
+  const ids = [];
+  for (const kind of ['decision', 'approval', 'question', 'action']) {
+    const item = store.create({ source: 'agent', kind, sessionId: 's1', title: 'Pick', options: [{ id: 'a', label: 'A' }] });
+    ids.push(item.id);
+    assert.equal(item.allowFreeText, false);
+    await answer({ id: item.id, optionId: 'a', text: ' after lunch ' }, host);
+    const saved = store.get(item.id);
+    assert.equal(saved.state, 'resolved');
+    assert.equal(saved.answer.optionId, 'a');
+    assert.equal(saved.answer.text, 'after lunch');
+    assert.match(calls.deliver.at(-1).text, /\nChoice: A \(a\)\nNote: after lunch$/);
+  }
+  assert.equal(calls.rebuild, 4);
+  const reloaded = fakeHost({ file }).store;
+  for (const id of ids) {
+    assert.equal(reloaded.get(id).answer.optionId, 'a');
+    assert.equal(reloaded.get(id).answer.text, 'after lunch');
+  }
+});
+
 test('inbox-answer with free text, and with both when free text is allowed', async () => {
   const { host, store, calls, freeText } = setup();
   await answer({ id: freeText.id, text: 'eu-west-1' }, host);
@@ -49,8 +72,9 @@ test('inbox-answer with free text, and with both when free text is allowed', asy
 test('inbox-answer refuses invalid answers without delivering', async () => {
   const { host, store, calls, withOptions, freeText } = setup();
   const cases = [
-    [{ id: withOptions.id, optionId: 'nope' }, /not one of this request's options/],
+    [{ id: withOptions.id, optionId: 'nope', text: 'a note' }, /not one of this request's options/],
     [{ id: withOptions.id, text: 'free text' }, /not free text/],
+    [{ id: withOptions.id, optionId: 'a', text: 'x'.repeat(4001) }, /at most 4000/],
     [{ id: withOptions.id }, /choose an option/],
     [{ id: freeText.id }, /needs some text/],
     [{ id: freeText.id, text: '   ' }, /needs some text/],

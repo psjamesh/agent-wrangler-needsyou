@@ -103,8 +103,9 @@ These are checked against `server/extensions/index.js` (`validateManifest`), `se
 - `normaliseItem` coerces (it trims, single-lines and clips text, drops invalid options, forces
   the source invariants) and throws only on what can't be repaired. `create` and `update` both
   run it. Agent input must go through `validateAgentRequest` first, which rejects instead.
-- `answer` checks the answer with `validateAnswer`: the option must exist, text needs
-  `allowFreeText`, text is ≤ 4000, and an item without options needs text. So `inbox-answer`
+- `answer` checks the answer with `validateAnswer`: the option must exist, an optional note
+  may accompany any choice, text without a choice needs `allowFreeText`, text is ≤ 4000,
+  and an item without options needs text. So `inbox-answer`
   can rely on `store.answer` throwing a message fit for a toast.
 - `setDelivery` counts an attempt on every `delivered`/`failed` (`answer.attempts`); `pending`
   does not count. `deliveryError` is clipped to 500 characters.

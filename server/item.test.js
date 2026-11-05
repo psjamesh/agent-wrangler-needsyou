@@ -125,7 +125,12 @@ test('validateAnswer checks options, free text and length', () => {
   assert.deepEqual(validateAnswer(free, { text: 'just text' }), { optionId: null, text: 'just text' });
   assert.deepEqual(validateAnswer(text, { text: 'go' }), { optionId: null, text: 'go' });
   assert.throws(() => validateAnswer(opts, { optionId: 'z' }), /not one of/);
-  assert.throws(() => validateAnswer(opts, { optionId: 'a', text: 'x' }), /not free text/);
+  assert.deepEqual(validateAnswer(opts, { optionId: 'a', text: ' why ' }), { optionId: 'a', text: 'why' });
+  assert.deepEqual(validateAnswer(opts, { optionId: 'a', text: '  \n ' }), { optionId: 'a', text: null });
+  assert.equal(validateAnswer(opts, { optionId: 'a', text: 'x'.repeat(4000) }).text.length, 4000);
+  assert.throws(() => validateAnswer(opts, { optionId: 'a', text: 'x'.repeat(4001) }), /at most 4000/);
+  assert.throws(() => validateAnswer(opts, { text: 'a note' }), /not free text/);
+  assert.throws(() => validateAnswer(free, { optionId: 'z', text: 'a note' }), /not one of/);
   assert.throws(() => validateAnswer(opts, {}), /choose an option/);
   assert.throws(() => validateAnswer(text, { text: '  ' }), /needs some text/);
   assert.throws(() => validateAnswer(text, { optionId: 'a' }), /not one of/);

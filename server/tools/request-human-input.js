@@ -40,7 +40,7 @@ export const inputSchema = {
   title: z.string().min(1).max(LIMITS.title).describe('One line: the decision or action needed.'),
   body: z.string().max(LIMITS.body).optional().describe('Markdown: the context, the trade-offs and what you recommend.'),
   options: z.array(optionSchema).max(LIMITS.options).optional().describe('2-4 choices where there is one. Omit for a free-text answer.'),
-  allow_free_text: z.boolean().optional().describe('With options, also let the human type an answer. Default false; always true without options.'),
+  allow_free_text: z.boolean().optional().describe('With options, allow a free-text answer instead of a choice. An optional note can always accompany a choice. Default false; always true without options.'),
   blocking: z.boolean().optional().describe('Whether you are stopping until the answer arrives. Default true: end your turn after the call.'),
   urgency: z.enum(URGENCIES).optional().describe('high only when waiting is costly (e.g. something is broken or a deadline is close).'),
   dedupe_key: z.string().max(LIMITS.dedupeKey).optional().describe('Your own stable key for this need. Asking again with it updates the open request in place.'),

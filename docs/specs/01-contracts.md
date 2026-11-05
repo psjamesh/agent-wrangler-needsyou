@@ -74,7 +74,7 @@ interface Item {
   title: string;            // 1..120 chars, single line
   body: string;             // markdown, 0..8000 chars
   options: Option[];        // 0..6; agent items only
-  allowFreeText: boolean;   // forced true when options is empty
+  allowFreeText: boolean;   // permits text instead of a choice; forced true without options
   blocking: boolean;        // agent: default true; status: true
   urgency: 'normal' | 'high';
   dedupeKey: string;        // agent: `agent:<sid>:<key or id>`; status: `status:<sid>:<episode>`
@@ -133,6 +133,10 @@ class InboxStore {
 }
 ```
 
+- **Answers:** any valid selected option may carry an optional note in `text`, even when
+  `allowFreeText` is false. That flag permits text **instead of** a choice; false still requires
+  a valid option. Invalid option ids are rejected even with text. Text is trimmed, blank notes
+  become `null`, and non-blank text is limited to 4000 characters after trimming.
 - **Caps:**
   - 500 items in total; `create` first prunes the oldest resolved items, and throws if every item
     is open.

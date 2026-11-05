@@ -203,10 +203,11 @@ const archivedAsk = await callTool(ARCHIVED, 'request_human_input', { kind: 'app
 const archivedId = archivedAsk.result?.structuredContent?.id;
 if (expect(archivedId, 'a request from the archived card is recorded')) {
   await inboxWhere((ib) => itemIn(ib, archivedId), 'the archived card\'s item');
-  send({ type: 'inbox-answer', id: archivedId, optionId: 'yes' });
+  send({ type: 'inbox-answer', id: archivedId, optionId: 'yes', text: ' after lunch ' });
   const ib = await inboxWhere((x) => itemIn(x, archivedId)?.answer?.delivery === 'failed', 'the answer recorded as a failed delivery');
   const a = itemIn(ib, archivedId);
   console.log('answer to the archived card:', JSON.stringify({ state: a.state, answer: a.answer }));
+  expect(a.allowFreeText === false && a.answer.text === 'after lunch', 'fixed-choice answer keeps its optional note through the real handler and store');
   expect(a.state === 'answered' && a.answer.optionId === 'yes' && /archived/i.test(a.answer.deliveryError ?? ''), 'inbox-answer → host.deliver refuses the archived card, kept as answered + failed');
   send({ type: 'inbox-retry', id: archivedId });
   const ib2 = await inboxWhere((x) => itemIn(x, archivedId)?.answer?.attempts === 2, 'the retry counted');
