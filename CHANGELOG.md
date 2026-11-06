@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.14
+
+### Changed
+
+- **Clear** removes a selected answer option while preserving your typed reply.
+
 ## 0.1.13
 
 ### Added
