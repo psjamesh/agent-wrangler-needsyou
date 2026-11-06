@@ -92,8 +92,8 @@ earlier saved tab when closed. Keyboard focus stays put on the initial automatic
 terminal again if it reconnects.
 
 Every agent request lets you answer in your own words instead of selecting
-an offered option. You can also add an optional note to your choice. Select
-**Clear** to clear a choice while keeping your draft.
+an offered option. You can also add an optional note to your choice. Click
+the selected option again to deselect it while keeping your draft.
 
 ## How to work through the list
 

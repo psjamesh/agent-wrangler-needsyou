@@ -368,7 +368,7 @@ test('an open agent item: options, a note box, Send only once valid, the note ri
   assert.ok([...v.el.querySelectorAll('.ibx-option')].every((b) => b.disabled));
 });
 
-test('clearing a choice preserves drafts through ticks and re-renders for text-only keyboard replies', () => {
+test('clicking the selected choice again preserves drafts for text-only keyboard replies', () => {
   for (const modifier of ['ctrlKey', 'metaKey']) {
     const v = mountView();
     const d = item({ options: [{ id: 'a', label: 'A' }], allowFreeText: false });
@@ -392,9 +392,8 @@ test('clearing a choice preserves drafts through ticks and re-renders for text-o
     assert.equal(v.q('.ibx-text').value, ' after lunch ');
     assert.equal(v.q('.ibx-option').getAttribute('aria-checked'), 'true');
     assert.equal(v.q('.ibx-send').disabled, false);
-    const clear = v.q('.ibx-clear-choice');
-    assert.equal(text(clear), 'Clear');
-    clear.click();
+    v.q('.ibx-option').click();
+    assert.equal(v.q('.ibx-clear-choice'), null);
     assert.equal(v.q('.ibx-option').getAttribute('aria-checked'), 'false');
     assert.equal(v.q('.ibx-text').value, ' after lunch ');
     assert.equal(v.document.activeElement, v.q('.ibx-text'));
@@ -404,6 +403,26 @@ test('clearing a choice preserves drafts through ticks and re-renders for text-o
     v.press('Enter', { [modifier]: true });
     assert.deepEqual(v.sent.at(-1), { type: 'inbox-answer', id: d.id, text: 'after lunch' });
     assert.equal(v.q('.ibx-text').disabled, true);
+  }
+});
+
+test('repeating an option click or shortcut deselects it and requires text before sending', () => {
+  for (const keyboard of [false, true]) {
+    const v = mountView();
+    const d = item({ options: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }] });
+    v.view.update(graphOf([d]));
+    v.view.select(d.id);
+    const choose = (n) => keyboard ? v.press(String(n)) : v.el.querySelectorAll('.ibx-option')[n - 1].click();
+    choose(1);
+    choose(2);
+    assert.equal(v.q('[data-option-id="a"]').getAttribute('aria-checked'), 'false');
+    assert.equal(v.q('[data-option-id="b"]').getAttribute('aria-checked'), 'true');
+    assert.equal(v.q('.ibx-send').disabled, false);
+    choose(2);
+    assert.equal(v.q('[data-option-id="b"]').getAttribute('aria-checked'), 'false');
+    assert.equal(v.q('.ibx-send').disabled, true);
+    assert.equal(v.q('.ibx-clear-choice'), null);
+    assert.equal(v.sent.some((f) => f.type === 'inbox-answer'), false);
   }
 });
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.15
+
+### Changed
+
+- Click a selected answer option again to deselect it while keeping your draft.
+
 ## 0.1.14
 
 ### Changed
