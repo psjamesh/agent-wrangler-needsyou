@@ -67,12 +67,13 @@ The non-obvious decisions behind `public/index.js`, `public/inbox-*.js`,
 ## Answering
 
 - The text box is full width with a visible label (F6): "Your answer" for an
-  open question, "Add a note (optional)" when there are options. There is a
-  12 px gap before the box and before the button row. Every open agent request
-  with options offers the note box, including fixed-choice requests. A note
-  alone enables Send only when `allowFreeText` permits an alternative answer;
-  otherwise a valid option must be selected. Cmd/Ctrl+Enter follows the same
-  rule. Notes and choices survive graph ticks and detail re-renders.
+  open question, "Your answer, or a note with your choice" when there are
+  options. There is a 12 px gap before the box and before the button row.
+  **Send** enables for a valid option or nonempty text on every agent request,
+  including saved requests with `allowFreeText: false`. Cmd/Ctrl+Enter follows
+  the same rule. **Use text only** clears the selected option, keeps the draft
+  and focuses the answer field. Typing alone keeps the choice. Drafts and
+  choices survive graph ticks and detail re-renders.
 - An `action` request with no options has a main **Done** button (F9). It sends
   `done`, or `done` plus the note. **Send** stays as a secondary button.
 - A non-blocking request says "The agent is still working." under its header.

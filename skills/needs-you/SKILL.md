@@ -93,8 +93,11 @@ Then it writes the same two questions in chat and ends its turn.
 - **title:** one line naming the decision or action ("Migrate users in place or behind a copy?")
 - **body:** markdown with the context the human needs to answer without opening your
   terminal, the trade-offs, and **your recommendation**
-- **options:** 2-4 short labels when there is a choice. Set `allow_free_text: true`
-  if a typed answer could also make sense. Omit options for an open question.
+- **options:** 2-4 short labels when there is a choice. Every request accepts
+  standalone text instead, or an optional note with a selected choice. Omit
+  options for an open question.
+- **allow_free_text:** deprecated and ignored; text replies are always allowed,
+  including for existing requests saved with this flag set to `false`.
 - **urgency:** `high` only when waiting is costly
 - **dedupe_key:** a stable key of your own for this need. Asking again with it
   updates the open request in place instead of adding another.
@@ -113,7 +116,11 @@ Note: and tell it to commit often
 ```
 
 Treat it as the human's answer to that request id, and continue. The `Choice`
-or `Note` line is left out when the human gave none.
+or `Note` line is left out when the human gave none. A `Note` without a
+`Choice` is a standalone human response: follow the actual text. The absence
+of `Choice` alone signals neither approval nor rejection. Do not infer a
+default option or approval from it; explicit text can approve, decline or
+propose another approach.
 
 ## If you get the answer some other way
 

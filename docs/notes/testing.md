@@ -30,11 +30,12 @@ This page has two parts:
 - A helper session (one that another session started) is refused, and the
   refusal names the session that started it. After `inbox-set-can-ask`, the
   same call succeeds. `allowed: null` sets the default again.
-- `inbox-answer` preserves a fixed-choice answer with an optional note and
-  reaches `host.deliver`. The smoke test sends the answer only to an archived
-  card, which refuses it. So no session starts. The item stays
-  answered with a failed delivery. `inbox-retry` fails the same way and counts
-  the attempt.
+- `inbox-answer` preserves both an option with an optional note and a standalone
+  text answer, including when `allow_free_text` is false, and reaches
+  `host.deliver`. The smoke test sends answers only to an archived card, which
+  refuses them. So no session starts. The items stay answered with failed
+  deliveries. `inbox-retry` fails the same way and counts the attempt.
+  `inbox.json` preserves the standalone text answer without an option.
 - `inbox-dismiss` and `withdraw_human_request` close items. A session cannot
   withdraw a request from a different session.
 - `inbox.json` in the data folder holds the items.

@@ -117,7 +117,7 @@ function agentRequest(args) {
     title,
     body,
     options,
-    allowFreeText: options.length === 0 ? true : allowFree === true,
+    allowFreeText: true,
     blocking: args.blocking !== false,
     urgency: args.urgency ?? 'normal',
     dedupeKey: has(key) ? key.trim() : null,
@@ -204,7 +204,7 @@ export function normaliseItem(raw) {
     title,
     body: isStr(raw.body) ? clip(raw.body, LIMITS.body) : '',
     options,
-    allowFreeText: options.length === 0 ? true : raw.allowFreeText === true,
+    allowFreeText: true,
     blocking: status ? true : raw.blocking !== false,
     urgency: URGENCIES.includes(raw.urgency) ? raw.urgency : 'normal',
     dedupeKey,
@@ -242,7 +242,6 @@ export function validateAnswer(item, { optionId, text } = {}) {
   const note = has(text) && text.trim() ? text.trim() : null;
   if (choice && !item.options.some((o) => o.id === choice)) throw new Error(`"${choice}" is not one of this request's options`);
   if (note && note.length > LIMITS.answerText) throw new Error(`the answer must be at most ${LIMITS.answerText} characters`);
-  if (note && !choice && !item.allowFreeText) throw new Error('this request takes one of its options, not free text');
   if (!choice && !note) throw new Error(item.options.length ? 'choose an option' : 'the answer needs some text');
   return { optionId: choice, text: note };
 }

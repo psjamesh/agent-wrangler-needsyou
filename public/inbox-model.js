@@ -239,7 +239,6 @@ export function answerPayload(item, { optionId = null, text = '' } = {}) {
   const choice = optionId && item.options?.some((o) => o.id === optionId) ? optionId : null;
   if (optionId && !choice) return null;
   const note = String(text ?? '').trim();
-  if (!choice && !item.allowFreeText) return null;
   if (!choice && !note) return null;
   if (note.length > 4000) return null;
   return { type: 'inbox-answer', id: item.id, ...(choice ? { optionId: choice } : {}), ...(note ? { text: note } : {}) };

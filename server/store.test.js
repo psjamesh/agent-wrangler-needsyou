@@ -124,7 +124,7 @@ test('update restates an open agent request in place, validated like create', ()
   });
   assert.deepEqual(
     [u.id, u.readAt, u.createdAt, u.updatedAt, u.title, u.body, u.options.map((o) => o.id), u.allowFreeText, u.blocking, u.urgency, u.expiresAt, u.dedupeKey, u.state],
-    [a.id, readAt, a.createdAt, now(), 'Pick a DB again', 'more context', ['pg', 'sq'], false, false, 'high', now() + 60_000, 'agent:s1:db', 'open'],
+    [a.id, readAt, a.createdAt, now(), 'Pick a DB again', 'more context', ['pg', 'sq'], true, false, 'high', now() + 60_000, 'agent:s1:db', 'open'],
   );
   assert.equal(store.update(a.id, { options: [] }).allowFreeText, true);
   assert.deepEqual(store.get(a.id), store.findOpenByDedupe('agent:s1:db'));

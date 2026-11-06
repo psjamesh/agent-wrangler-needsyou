@@ -36,9 +36,13 @@ test('titles collapse newlines to spaces', () => {
   assert.equal(ok({ kind: 'action', title: 'Line one\n\r\n  line two\tend' }).title, 'Line one line two end');
 });
 
-test('empty options force allowFreeText; options default it off', () => {
+test('all requests allow free text regardless of the compatibility flag', () => {
+  for (const flag of [undefined, false, true]) {
+    assert.equal(ok({ kind: 'decision', title: 't', options: [{ id: 'a', label: 'A' }], allow_free_text: flag }).allowFreeText, true);
+    assert.equal(normaliseItem(base({ options: [{ id: 'a', label: 'A' }], allowFreeText: flag })).allowFreeText, true);
+  }
   assert.equal(ok({ kind: 'decision', title: 't', options: [], allow_free_text: false }).allowFreeText, true);
-  assert.equal(ok({ kind: 'decision', title: 't', options: [{ id: 'x', label: 'X' }] }).allowFreeText, false);
+  assert.equal(ok({ kind: 'decision', title: 't', options: [{ id: 'x', label: 'X' }] }).allowFreeText, true);
 });
 
 test('options get unique ids', () => {
@@ -90,7 +94,7 @@ test('normaliseItem fills a complete item and clips text', () => {
   assert.ok(item.title.startsWith('a b') && item.title.endsWith('…'));
   assert.equal(item.body.length, LIMITS.body);
   assert.deepEqual(item.options, [{ id: 'a', label: 'A' }]);
-  assert.equal(item.allowFreeText, false);
+  assert.equal(item.allowFreeText, true);
   assert.equal(item.blocking, true);
   assert.equal('extra' in item, false);
   assert.deepEqual(Object.keys(item), [
@@ -129,7 +133,11 @@ test('validateAnswer checks options, free text and length', () => {
   assert.deepEqual(validateAnswer(opts, { optionId: 'a', text: '  \n ' }), { optionId: 'a', text: null });
   assert.equal(validateAnswer(opts, { optionId: 'a', text: 'x'.repeat(4000) }).text.length, 4000);
   assert.throws(() => validateAnswer(opts, { optionId: 'a', text: 'x'.repeat(4001) }), /at most 4000/);
-  assert.throws(() => validateAnswer(opts, { text: 'a note' }), /not free text/);
+  const legacy = { ...opts, allowFreeText: false };
+  assert.deepEqual(validateAnswer(legacy, { text: ' another approach ' }), { optionId: null, text: 'another approach' });
+  assert.equal(validateAnswer(legacy, { text: 'x'.repeat(4000) }).text.length, 4000);
+  assert.throws(() => validateAnswer(legacy, { text: 'x'.repeat(4001) }), /at most 4000/);
+  assert.throws(() => validateAnswer(legacy, { text: ' \n ' }), /choose an option/);
   assert.throws(() => validateAnswer(free, { optionId: 'z', text: 'a note' }), /not one of/);
   assert.throws(() => validateAnswer(opts, {}), /choose an option/);
   assert.throws(() => validateAnswer(text, { text: '  ' }), /needs some text/);

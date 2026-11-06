@@ -20,7 +20,7 @@ export const answerHandler = {
     if (!item) throw new Error('unknown inbox item');
     if (item.source !== 'agent') throw new Error('only an agent request can be answered');
     if (item.state !== 'open') throw new Error(`this request is ${item.state}, not open`);
-    // store.answer checks the option, the free-text rule and the length.
+    // store.answer checks the option, nonempty answer and text length.
     store.answer(id, { optionId: msg.optionId, text: msg.text });
     try {
       await deliverAnswer(host, store, id);

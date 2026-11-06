@@ -368,7 +368,7 @@ test('an open agent item: options, a note box, Send only once valid, the note ri
   assert.ok([...v.el.querySelectorAll('.ibx-option')].every((b) => b.disabled));
 });
 
-test('fixed-choice notes require a choice and keep drafts through ticks and re-renders', () => {
+test('clearing a choice preserves drafts through ticks and re-renders for text-only keyboard replies', () => {
   for (const modifier of ['ctrlKey', 'metaKey']) {
     const v = mountView();
     const d = item({ options: [{ id: 'a', label: 'A' }], allowFreeText: false });
@@ -376,14 +376,13 @@ test('fixed-choice notes require a choice and keep drafts through ticks and re-r
     v.view.select(d.id);
     const ta = v.q('.ibx-text');
     assert.ok(ta, 'fixed choices offer an optional note');
-    assert.equal(text(v.q('.ibx-text-label')), 'Add a note (optional)');
+    assert.equal(text(v.q('.ibx-text-label')), 'Your answer, or a note with your choice');
     assert.equal(ta.maxLength, 4000);
     assert.match(text(v.q('.ibx-hint')), /Enter sends/);
     ta.value = ' after lunch ';
     ta.dispatchEvent(new v.window.Event('input', { bubbles: true }));
     ta.focus();
-    v.press('Enter', { [modifier]: true });
-    assert.equal(v.q('.ibx-send').disabled, true);
+    assert.equal(v.q('.ibx-send').disabled, false);
     assert.equal(v.sent.filter((f) => f.type === 'inbox-answer').length, 0);
     v.q('.ibx-option').click();
     const chosenField = v.q('.ibx-text');
@@ -393,12 +392,17 @@ test('fixed-choice notes require a choice and keep drafts through ticks and re-r
     assert.equal(v.q('.ibx-text').value, ' after lunch ');
     assert.equal(v.q('.ibx-option').getAttribute('aria-checked'), 'true');
     assert.equal(v.q('.ibx-send').disabled, false);
-    v.q('.ibx-text').focus();
+    const clear = v.q('.ibx-clear-choice');
+    assert.equal(text(clear), 'Use text only');
+    clear.click();
+    assert.equal(v.q('.ibx-option').getAttribute('aria-checked'), 'false');
+    assert.equal(v.q('.ibx-text').value, ' after lunch ');
+    assert.equal(v.document.activeElement, v.q('.ibx-text'));
     const enter = v.press('Enter');
     assert.equal(enter.defaultPrevented, false, 'plain Enter stays in the note');
     assert.equal(v.sent.filter((f) => f.type === 'inbox-answer').length, 0);
     v.press('Enter', { [modifier]: true });
-    assert.deepEqual(v.sent.at(-1), { type: 'inbox-answer', id: d.id, optionId: 'a', text: 'after lunch' });
+    assert.deepEqual(v.sent.at(-1), { type: 'inbox-answer', id: d.id, text: 'after lunch' });
     assert.equal(v.q('.ibx-text').disabled, true);
   }
 });
@@ -877,7 +881,7 @@ test('the answer box has a visible label', () => {
   assert.equal(text(label), 'Your answer');
   assert.equal(label.htmlFor, v.q('.ibx-text').id);
   v.view.select(withOpts.id);
-  assert.equal(text(v.q('.ibx-text-label')), 'Add a note (optional)');
+  assert.equal(text(v.q('.ibx-text-label')), 'Your answer, or a note with your choice');
 });
 
 test('an action has a main Done button that answers "done", with the note', () => {
@@ -1378,4 +1382,24 @@ test('pagehide restores a temporary preference and pageshow can remount the expl
   v.window.dispatchEvent(new v.window.Event('pageshow'));
   assert.equal(v.mounts.length, 2);
   assert.equal(v.window.localStorage.getItem('cm-session-view'), raw);
+});
+
+test('all agent kinds offer standalone text despite old false metadata', () => {
+  for (const kind of ['decision', 'approval', 'question', 'action']) {
+    const v = mountView();
+    const d = item({ kind, options: [{ id: 'a', label: 'A' }], allowFreeText: false });
+    v.view.update(graphOf([d]));
+    v.view.select(d.id);
+    const ta = v.q('.ibx-text');
+    for (const value of ['  ', 'x'.repeat(4001)]) {
+      ta.value = value;
+      ta.dispatchEvent(new v.window.Event('input', { bubbles: true }));
+      assert.equal(v.q('.ibx-send').disabled, true);
+    }
+    ta.value = 'x'.repeat(4000);
+    ta.dispatchEvent(new v.window.Event('input', { bubbles: true }));
+    assert.equal(v.q('.ibx-send').disabled, false);
+    v.q('.ibx-send').click();
+    assert.deepEqual(v.sent.at(-1), { type: 'inbox-answer', id: d.id, text: 'x'.repeat(4000) });
+  }
 });

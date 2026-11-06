@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.13
+
+### Added
+
+- **Text replies on every agent request.** Answer in your own words instead
+  of an offered option, or add an optional note to a selected choice.
+  **Use text only** clears a choice without losing your draft. Existing
+  requests also support text replies; `allow_free_text` is deprecated and
+  ignored, including when false.
+
 ## 0.1.12
 
 ### Changed

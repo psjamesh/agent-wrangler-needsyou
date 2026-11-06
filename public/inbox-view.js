@@ -373,12 +373,21 @@ export function createInboxView(el, api, {
         group.appendChild(b);
       });
       wrap.appendChild(group);
+      if (choice) {
+        const clear = button('ibx-clear-choice', 'Use text only', () => {
+          choices.delete(item.id);
+          renderDetail();
+          focusRole('text');
+        }, { disabled: busy });
+        clear.dataset.ibxRole = 'clear-choice';
+        wrap.appendChild(clear);
+      }
     }
     const done = hasDone(item);
     const field = make('div', 'ibx-field');
     const ta = make('textarea', 'ibx-text');
     ta.id = `ibx-text-${item.id}`;
-    const label = make('label', 'ibx-text-label', item.options.length || done ? 'Add a note (optional)' : 'Your answer');
+    const label = make('label', 'ibx-text-label', item.options.length ? 'Your answer, or a note with your choice' : done ? 'Add a note (optional)' : 'Your answer');
     label.htmlFor = ta.id;
     ta.rows = 3;
     ta.maxLength = 4000;

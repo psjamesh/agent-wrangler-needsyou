@@ -90,7 +90,7 @@ test('request_human_input: the happy path queues an item for the caller', async 
   assert.equal(item.taskId, 't1');
   assert.equal(item.body, 'The table has 40M rows.\n\nI recommend **behind a copy**.');
   assert.deepEqual(item.options, [{ id: 'copy', label: 'Behind a copy' }, { id: 'in-place', label: 'In place' }]);
-  assert.equal(item.allowFreeText, false);
+  assert.equal(item.allowFreeText, true);
   assert.equal(item.urgency, 'high');
   assert.equal(item.dedupeKey, 'agent:s1:ibx_000000000001');
   assert.equal(item.expiresAt, now() + 60 * 60_000);
@@ -289,4 +289,18 @@ test('list_my_human_requests lists only the caller\'s agent requests: open, answ
     { id: recent, kind: 'decision', title: 'recent', state: 'resolved', resolvedReason: 'delivered', answer: { optionId: 'a', text: null } },
   ]);
   assert.deepEqual(JSON.parse(out.content[0].text), out.structuredContent);
+});
+
+test('request_human_input ignores false compatibility flags on creation and dedupe updates', async () => {
+  const { request, as, store } = setup();
+  const args = ask({ options: [{ id: 'a', label: 'A' }], allow_free_text: false, dedupe_key: 'choice' });
+  const first = await request.handler(as('s1'), args);
+  const id = first.structuredContent.id;
+  assert.equal(store.get(id).allowFreeText, true);
+  const updated = await request.handler(as('s1'), { ...args, body: 'More context' });
+  assert.equal(updated.structuredContent.id, id);
+  assert.equal(updated.structuredContent.updated, true);
+  assert.equal(store.get(id).allowFreeText, true);
+  store.answer(id, { text: 'another approach' });
+  assert.equal(store.get(id).answer.text, 'another approach');
 });
