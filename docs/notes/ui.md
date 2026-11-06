@@ -200,8 +200,9 @@ remain the board's own.
 The view's **Group** choices are None, Task and Type. **Sort** offers Recommended,
 Type and Time waiting, with Asc/Desc enabled for explicit sorts. Type compares
 `itemLabel`, including passive Permission, Sign-in, Error and other visible
-labels. Ascending waiting compares creation timestamps newest first (shortest
-elapsed wait); descending puts oldest first. This also applies to closed items.
+labels. Ascending time puts the shortest displayed ages first; descending puts the
+longest first. Open requests use creation time, failed deliveries use answer
+time, and closed items use closure time (sending answers use answer time).
 Equal explicit sort values use ascending item ids, independent of direction.
 Recommended retains the Open/Closed/All ordering described above.
 

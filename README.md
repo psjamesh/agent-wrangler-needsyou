@@ -123,8 +123,9 @@ Use the buttons at the top of the list to choose what it shows:
 Use **Group** to choose **None**, **Task** or **Type**, and **Sort** to choose
 **Recommended**, **Type** or **Time waiting**. **Asc** and **Desc** set the direction
 for Type and Time waiting. Ascending time waiting puts the shortest wait first;
-descending puts the longest first. Waiting is measured from when the request
-was created, including for closed items.
+descending puts the longest first. Sorting matches the displayed age: request
+creation for open items, answer time for failed deliveries, and closure time
+for closed items (answer time while sending).
 
 Groups are alphabetic; sorting applies within each group. Type uses the label
 shown on the item, such as Permission, Sign-in or Decision. Task follows the

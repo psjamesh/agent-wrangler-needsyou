@@ -31,6 +31,28 @@ test('equal sort values use stable ids in either direction independent of graph 
   }
 });
 
+test('time sorting follows the displayed open, answered and closed ages', () => {
+  const items = [
+    item({ id: 'open', createdAt: 20 }),
+    item({ id: 'closed', state: 'resolved', createdAt: 10, updatedAt: 40 }),
+    item({ id: 'failed', state: 'answered', createdAt: 50, answer: { delivery: 'failed', at: 30 } }),
+    item({ id: 'fallback', state: 'answered', createdAt: 60, updatedAt: 15, answer: { delivery: 'failed' } }),
+    item({ id: 'sending', state: 'answered', createdAt: 5, answer: { delivery: 'pending', at: 35 } }),
+  ];
+  const graph = graphOf(items);
+  assert.deepEqual(ids(presentItems(items, graph, 'all', prefs('waiting'))), ['closed', 'sending', 'failed', 'open', 'fallback']);
+  assert.deepEqual(ids(presentItems(items, graph, 'all', prefs('waiting', 'desc'))), ['fallback', 'open', 'failed', 'sending', 'closed']);
+  assert.deepEqual(ids(presentItems(items, graph, 'open', prefs('waiting'))), ['failed', 'open', 'fallback']);
+  assert.deepEqual(ids(presentItems(items, graph, 'closed', prefs('waiting'))), ['closed', 'sending']);
+});
+
+test('whitespace-only task names use the No task group', () => {
+  const items = [item()];
+  const graph = graphOf(items, { sessions: { s1: { taskId: 't1', taskName: '  ' } } });
+  const groups = presentItems(items, graph, 'open', prefs('recommended', 'asc', 'task'));
+  assert.deepEqual(groups.map((g) => [g.key, g.label]), [['no-task', 'No task']]);
+});
+
 test('type groups are alphabetic visible labels with direction applying only within groups', () => {
   const items = [statusItem({ id: 'p', createdAt: 10 }), item({ id: 'q', kind: 'question' }),
     statusItem({ id: 'q2', createdAt: 20, status: { cause: 'question' } }),
