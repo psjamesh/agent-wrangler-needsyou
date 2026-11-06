@@ -71,7 +71,7 @@ The non-obvious decisions behind `public/index.js`, `public/inbox-*.js`,
   options. There is a 12 px gap before the box and before the button row.
   **Send** enables for a valid option or nonempty text on every agent request,
   including saved requests with `allowFreeText: false`. Cmd/Ctrl+Enter follows
-  the same rule. **Clear** clears the selected option, keeps the draft
+  the same rule. Clicking the selected option again deselects it, keeps the draft
   and focuses the answer field. Typing alone keeps the choice. Drafts and
   choices survive graph ticks and detail re-renders.
 - An `action` request with no options has a main **Done** button (F9). It sends

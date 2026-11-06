@@ -373,15 +373,7 @@ export function createInboxView(el, api, {
         group.appendChild(b);
       });
       wrap.appendChild(group);
-      if (choice) {
-        const clear = button('ibx-clear-choice', 'Clear', () => {
-          choices.delete(item.id);
-          renderDetail();
-          focusRole('text');
-        }, { disabled: busy });
-        clear.dataset.ibxRole = 'clear-choice';
-        wrap.appendChild(clear);
-      }
+
     }
     const done = hasDone(item);
     const field = make('div', 'ibx-field');
@@ -533,9 +525,11 @@ export function createInboxView(el, api, {
   }
 
   function choose(item, optionId) {
-    choices.set(item.id, optionId);
+    const deselect = choices.get(item.id) === optionId;
+    if (deselect) choices.delete(item.id);
+    else choices.set(item.id, optionId);
     renderDetail();
-    focusRole('send');
+    focusRole(deselect ? 'text' : 'send');
   }
 
   // A blocked session opens on its Terminal, where the prompt is.
