@@ -59,7 +59,8 @@ The non-obvious decisions behind `public/index.js`, `public/inbox-*.js`,
   `view: 'diff'`), so `public/inbox-session-view.js` first writes the board's
   own per-session choice, `localStorage['cm-session-view'][sid] = 'terminal'`.
   That key is core's, not a contract: if it changes, the session opens on its
-  remembered tab, as before. The choice stays after the prompt is answered.
+  remembered tab. Manual Open/Show choices stay after the prompt is answered;
+  the automatic embed holds a temporary preference until it closes.
   Replace this with a `view: 'terminal'` option once the host API has one.
   Agent requests and closed items open on the remembered tab.
 
@@ -127,7 +128,40 @@ remain the board's own.
 
 - The narrow layout uses a container query on `.ibx-root` (< 900 px), not a
   media query, so it follows the view's width.
-- Status items have a **Show terminal here** toggle (`api.mountSession`).
+- Selecting an open permission-status item automatically embeds its live session's
+  terminal (`api.mountSession`) only after deliberate opening: selecting a row,
+  opening with the keyboard or following **View request**. A desktop first-item
+  preview and the next preview after resolution never mount. It uses the
+  semantic `status.cause === 'permission'`, regardless of provider or title.
+  Other statuses keep the **Show terminal here** toggle; agent approval requests
+  and read-only items do not automatically embed.
+- Only a visible detail mounts: the phone list, a hidden view and an unmounted
+  view never acquire the host's single embedded panel. Changing selection,
+  closing detail, resolving/removing the item or hiding the view releases it.
+  Returning to a visible detail can mount again. **Hide terminal** persists
+  through graph updates and view changes for the same selection; a new selection
+  gets the default again when deliberately opened. Graph restatements do not
+  remount or move focus.
+- Automatic mounts require the session to be present, managed and not archived
+  in the core graph: the host resumes dormant sessions when mounting them.
+  Opening an embed runs the host's session selection path, acknowledging its
+  alert and clearing its snooze; this is why automatic previews never mount.
+  It sends no approval or terminal input.
+- An automatic embed temporarily sets the session to Terminal while mounted,
+  because the host re-reads that preference on graph updates. Release, mount
+  failure and pagehide restore the prior preference. Other sessions' edits and
+  a human's change to Chat are preserved. Manual **Open session** and **Show
+  terminal here** keep their existing permanent Terminal choice. The temporary
+  value cannot be distinguished from a later Chat → Terminal choice inside
+  the embed, so that sequence can still restore the earlier saved tab on release.
+- The view restores keyboard focus immediately after an automatic mount.
+  The host can focus the terminal later on a pty socket reconnect (its delayed
+  `openTerminal` retry) or a graph reattach after restart. The embed API has no
+  focus-control option. The extension leaves later focus alone so deliberate
+  terminal interaction works normally.
+- Missing, null or throwing embed support leaves **Open session** available.
+  A failed automatic mount is not retried by graph or visibility updates for
+  that selection; **Show terminal here** allows an explicit retry.
 - Colour comes only from the board's CSS variables, so both themes work.
 
 ## Filters and the read-only view

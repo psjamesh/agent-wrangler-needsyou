@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.12
+
+### Changed
+
+- Deliberately opening an open permission prompt shows its live session's
+  terminal in the visible detail pane. Automatic first/next previews wait for
+  you to open them. **Hide terminal** lasts for the current selection, and the
+  automatic embed restores your saved tab when closed. Other statuses keep
+  their manual terminal toggle.
+
 ## 0.1.11
 
 ### Added
