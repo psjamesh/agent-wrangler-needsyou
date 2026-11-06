@@ -15,11 +15,11 @@
 //   focus and a half-typed answer survive a tick.
 import { ICONS, kindIcon } from './icons.js';
 import { patchList, setText, setAttr, setClass } from './inbox-dom.js';
-import { preferTerminal, wantsTerminal } from './inbox-session-view.js';
+import { preferTerminal, temporarilyPreferTerminal, wantsTerminal } from './inbox-session-view.js';
 import {
   queueOrder, closedOrder, closedAt, closedLabel, FILTERS, itemLabel, itemIconKey, isAlarm, isUrgent, guidanceFor,
   terminalText, resolvedLabel, waitingLabel, ageLabel, sessionMeta, sessionName, spawnedByLabel, inboxOf, isUnread,
-  isFailed, nextAfter, answerPayload, hasDone, donePayload, deliveryProblem,
+  isFailed, nextAfter, answerPayload, hasDone, donePayload, deliveryProblem, causeOf,
 } from './inbox-model.js';
 
 export { queueOrder } from './inbox-model.js';
@@ -111,6 +111,7 @@ export function createInboxView(el, api, {
   // The selection is the list's first item, picked for a two-pane layout,
   // not one the human opened: it is not marked read, and `n` starts on it.
   let autoPicked = false;
+  let detailRequested = false;
   // The human closed the detail (C1): no auto-pick until they pick a row,
   // press n, or a new item arrives.
   let userClosed = false;
@@ -120,7 +121,11 @@ export function createInboxView(el, api, {
   let wantFocus = false;
   let confirming = null;
   let detailKey = null;
-  let terminal = null; // { id, handle }
+  let terminal = null; // { id, sessionId, handle }
+  let terminalPreference = null;
+  let terminalAttempted = false;
+  let disposed = false;
+  let pageHidden = false;
   const readSent = new Set();
   const drafts = new Map();
   const choices = new Map();
@@ -132,7 +137,7 @@ export function createInboxView(el, api, {
   // The list showing, which is also what j/k walk.
   const shown = () => (filter === 'closed' ? closed : filter === 'all' ? [...order, ...closed] : order);
   const isShown = (id) => shown().some((i) => i.id === id);
-  const visible = () => el.isConnected && !el.closest('.hidden');
+  const visible = () => !disposed && !pageHidden && root.isConnected && !el.closest('.hidden, [hidden]');
 
   // ── queue rows ──────────────────────────────────────────────────────────
   function createRow() {
@@ -214,6 +219,7 @@ export function createInboxView(el, api, {
   function renderDetail() {
     const item = selected();
     setClass(root, ['ibx-root', detailOpen && item ? 'ibx-detail-open' : ''].filter(Boolean).join(' '));
+    syncTerminal(item);
     const key = renderDetailKey(item);
     if (key === detailKey) {
       const age = detailEl.querySelector('.ibx-d-age');
@@ -525,26 +531,62 @@ export function createInboxView(el, api, {
 
   // A blocked session opens on its Terminal, where the prompt is.
   function openSession(item) {
-    if (wantsTerminal(item)) preferTerminal(item.sessionId, storage);
+    if (wantsTerminal(item)) {
+      terminal?.restorePreference?.();
+      if (terminal) terminal.restorePreference = null;
+      preferTerminal(item.sessionId, storage);
+    }
     api.openSession?.(item.sessionId);
   }
 
-  function toggleTerminal(item) {
-    if (terminal?.id === item.id) closeTerminal();
-    else {
-      closeTerminal();
-      terminalEl.hidden = false;
-      preferTerminal(item.sessionId, storage);
+  function mountTerminal(item, { automatic = false } = {}) {
+    if (typeof api.mountSession !== 'function') return;
+    terminalAttempted = true;
+    terminalEl.hidden = false;
+    const restorePreference = automatic ? temporarilyPreferTerminal(item.sessionId, storage) : null;
+    if (!automatic) preferTerminal(item.sessionId, storage);
+    const active = doc.activeElement;
+    try {
       const handle = api.mountSession(terminalEl, item.sessionId);
-      if (handle) terminal = { id: item.id, handle };
-      else terminalEl.hidden = true;
+      if (handle) terminal = { id: item.id, sessionId: item.sessionId, handle, automatic, restorePreference };
+    } catch { /* Open session remains available. */ }
+    if (!terminal) { restorePreference?.(); closeTerminal(); }
+    if (automatic && doc.activeElement !== active) {
+      if (active && active !== doc.body && active.isConnected) active.focus({ preventScroll: true });
+      else doc.activeElement?.blur?.();
+    }
+  }
+
+  function syncTerminal(item) {
+    const showDetail = visible() && (isTwoPanes() || detailOpen);
+    const openStatus = wantsTerminal(item);
+    const auto = detailRequested && terminalPreference === null && causeOf(item) === 'permission';
+    const wanted = openStatus && (terminalPreference === true || auto);
+    const live = graph?.sessions?.some((s) => s.sessionId === item?.sessionId && s.managed === true && !s.archived);
+    if (terminal && (!showDetail || !wanted || (!live && terminal.automatic) || terminal.sessionId !== item.sessionId)) {
+      closeTerminal();
+      terminalAttempted = false;
+    }
+    if (showDetail && wanted && live && !terminal && !terminalAttempted) mountTerminal(item, { automatic: true });
+  }
+
+  function toggleTerminal(item) {
+    if (terminal?.id === item.id) {
+      terminalPreference = false;
+      closeTerminal();
+    } else {
+      terminalPreference = true;
+      closeTerminal();
+      if (visible() && (isTwoPanes() || detailOpen)) mountTerminal(item);
     }
     renderDetail();
   }
 
   function closeTerminal() {
-    if (!terminal) return;
-    try { terminal.handle.unmount(); } catch { /* the board reports its own */ }
+    if (terminal) {
+      try { terminal.handle.unmount(); } catch { /* the board reports its own */ }
+      terminal.restorePreference?.();
+    }
     terminal = null;
     terminalEl.hidden = true;
     terminalEl.replaceChildren();
@@ -585,7 +627,10 @@ export function createInboxView(el, api, {
   // ── selection ───────────────────────────────────────────────────────────
   function setSelected(id) {
     if (id === selectedId) return;
-    if (terminal && terminal.id !== id) closeTerminal();
+    closeTerminal();
+    terminalPreference = null;
+    terminalAttempted = false;
+    detailRequested = false;
     confirming = null;
     selectedId = id;
     autoPicked = false;
@@ -637,7 +682,7 @@ export function createInboxView(el, api, {
     setSelected(id);
     userClosed = false;
     autoPicked = false; // the human picked it, even if it was already shown
-    if (open) detailOpen = true;
+    if (open) { detailOpen = true; detailRequested = true; }
     render();
     if (focus) {
       if (visible()) focusPrimary();
@@ -662,6 +707,7 @@ export function createInboxView(el, api, {
     const to = at < 0 ? (delta > 0 ? 0 : list.length - 1) : Math.max(0, Math.min(list.length - 1, at + delta));
     const id = list[to].id;
     setSelected(id);
+    detailRequested = true;
     userClosed = false;
     render();
     findRow(queueEl, id)?.focus({ preventScroll: false });
@@ -712,7 +758,7 @@ export function createInboxView(el, api, {
       case 'Enter':
         // A focused button answers Enter itself.
         if (e.target.closest('button')) { handled = false; break; }
-        if (selected()) { detailOpen = true; render(); focusPrimary(); } else next();
+        if (selected()) { detailOpen = true; detailRequested = true; render(); focusPrimary(); } else next();
         break;
       default:
         if (/^[1-6]$/.test(e.key)) handled = chooseByNumber(Number(e.key));
@@ -728,15 +774,24 @@ export function createInboxView(el, api, {
   let watcher = null;
   if (host && Observer) {
     watcher = new Observer(() => {
-      if (!visible()) return;
-      if (!selectedId && shown().length) render();
+      if (!visible()) { renderDetail(); return; }
+      render();
       markRead();
       if (wantFocus) { wantFocus = false; focusPrimary(); return; }
       const active = doc.activeElement;
       if (!active || active === doc.body || active.closest?.('.layouts')) root.focus({ preventScroll: true });
     });
-    watcher.observe(host, { attributes: true, attributeFilter: ['class'] });
+    watcher.observe(host, { attributes: true, attributeFilter: ['class', 'hidden'] });
   }
+
+  const onPageHide = () => { pageHidden = true; renderDetail(); };
+  const onPageShow = () => { pageHidden = false; renderDetail(); };
+  doc.defaultView?.addEventListener('pagehide', onPageHide);
+  doc.defaultView?.addEventListener('pageshow', onPageShow);
+
+  const Resize = doc.defaultView?.ResizeObserver;
+  const resizeWatcher = Resize ? new Resize(() => renderDetail()) : null;
+  resizeWatcher?.observe(root);
 
   // ── render ──────────────────────────────────────────────────────────────
   function render() {
@@ -800,7 +855,11 @@ export function createInboxView(el, api, {
   }
 
   function unmount() {
+    disposed = true;
+    doc.defaultView?.removeEventListener('pagehide', onPageHide);
+    doc.defaultView?.removeEventListener('pageshow', onPageShow);
     watcher?.disconnect();
+    resizeWatcher?.disconnect();
     for (const s of sending.values()) cancel(s.timer);
     sending.clear();
     closeTerminal();
