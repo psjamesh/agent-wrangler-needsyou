@@ -374,7 +374,7 @@ export function createInboxView(el, api, {
       });
       wrap.appendChild(group);
       if (choice) {
-        const clear = button('ibx-clear-choice', 'Use text only', () => {
+        const clear = button('ibx-clear-choice', 'Clear', () => {
           choices.delete(item.id);
           renderDetail();
           focusRole('text');
