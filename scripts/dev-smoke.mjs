@@ -207,7 +207,7 @@ if (expect(archivedId, 'a request from the archived card is recorded')) {
   const ib = await inboxWhere((x) => itemIn(x, archivedId)?.answer?.delivery === 'failed', 'the answer recorded as a failed delivery');
   const a = itemIn(ib, archivedId);
   console.log('answer to the archived card:', JSON.stringify({ state: a.state, answer: a.answer }));
-  expect(a.allowFreeText === false && a.answer.text === 'after lunch', 'fixed-choice answer keeps its optional note through the real handler and store');
+  expect(a.allowFreeText === true && a.answer.text === 'after lunch', 'fixed-choice answer keeps its optional note through the real handler and store');
   expect(a.state === 'answered' && a.answer.optionId === 'yes' && /archived/i.test(a.answer.deliveryError ?? ''), 'inbox-answer → host.deliver refuses the archived card, kept as answered + failed');
   send({ type: 'inbox-retry', id: archivedId });
   const ib2 = await inboxWhere((x) => itemIn(x, archivedId)?.answer?.attempts === 2, 'the retry counted');
@@ -215,6 +215,21 @@ if (expect(archivedId, 'a request from the archived card is recorded')) {
   send({ type: 'inbox-dismiss', id: archivedId });
   const ib3 = await inboxWhere((x) => itemIn(x, archivedId)?.state === 'resolved', 'the failed answer dismissed');
   expect(itemIn(ib3, archivedId).resolvedReason === 'dismissed', 'inbox-dismiss closes it');
+}
+
+const textAsk = await callTool(ARCHIVED, 'request_human_input', {
+  kind: 'decision', title: 'Smoke: another approach?', options: [{ id: 'a', label: 'A' }], allow_free_text: false,
+});
+const textId = textAsk.result?.structuredContent?.id;
+if (expect(textId, 'a request with the false compatibility flag is recorded')) {
+  await inboxWhere((ib) => itemIn(ib, textId), 'the text-only request');
+  send({ type: 'inbox-answer', id: textId, text: ' another approach ' });
+  const ib = await inboxWhere((x) => itemIn(x, textId)?.answer?.delivery === 'failed', 'the standalone text answer recorded');
+  const a = itemIn(ib, textId);
+  expect(a.allowFreeText === true && a.answer.optionId === null && a.answer.text === 'another approach', 'standalone text passes the real handler and store despite allow_free_text false');
+  expect(/archived/i.test(a.answer.deliveryError ?? ''), 'standalone text reaches host.deliver without waking a card');
+  send({ type: 'inbox-dismiss', id: textId });
+  await inboxWhere((x) => itemIn(x, textId)?.state === 'resolved', 'the standalone text answer dismissed');
 }
 
 // 7. The agent's own view and withdrawal.
@@ -242,6 +257,8 @@ if (process.env.AW_SMOKE_DATA_DIR) {
   let saved = null;
   try { saved = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) { console.error(`(could not read ${file}: ${e.message})`); }
   expect(saved?.version === 1 && saved.items?.length >= 4 && saved.items.some((i) => i.id === agentId), `inbox.json in the data dir holds the items (${saved?.items?.length ?? 0})`);
+  const savedText = saved?.items?.find((i) => i.id === textId);
+  expect(savedText?.answer?.optionId === null && savedText?.answer?.text === 'another approach', 'inbox.json persists the standalone text answer without a choice');
   expect(saved && !Object.hasOwn(saved.canAsk ?? {}, WORKER), 'inbox.json has no canAsk override left for the worker');
 }
 finish();

@@ -74,7 +74,7 @@ interface Item {
   title: string;            // 1..120 chars, single line
   body: string;             // markdown, 0..8000 chars
   options: Option[];        // 0..6; agent items only
-  allowFreeText: boolean;   // permits text instead of a choice; forced true without options
+  allowFreeText: boolean;   // always true after creation or normalization, including saved false values
   blocking: boolean;        // agent: default true; status: true
   urgency: 'normal' | 'high';
   dedupeKey: string;        // agent: `agent:<sid>:<key or id>`; status: `status:<sid>:<episode>`
@@ -133,10 +133,13 @@ class InboxStore {
 }
 ```
 
-- **Answers:** any valid selected option may carry an optional note in `text`, even when
-  `allowFreeText` is false. That flag permits text **instead of** a choice; false still requires
-  a valid option. Invalid option ids are rejected even with text. Text is trimmed, blank notes
-  become `null`, and non-blank text is limited to 4000 characters after trimming.
+- **Answers:** every agent request accepts standalone nonempty `text` instead of an option,
+  or an optional note alongside a valid selected option. `allow_free_text` is accepted and
+  boolean-validated for compatibility, but deprecated and ignored. New and normalized metadata
+  have `allowFreeText: true`; existing saved `false` values do not restrict text replies.
+  Invalid option ids are rejected even with text. Text is trimmed, blank notes become `null`,
+  and non-blank text is limited to 4000 characters after trimming. An answer without a valid
+  option or nonempty text is rejected.
 - **Caps:**
   - 500 items in total; `create` first prunes the oldest resolved items, and throws if every item
     is open.

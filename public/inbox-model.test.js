@@ -135,7 +135,11 @@ test('answerPayload mirrors the store rules', () => {
   assert.equal(answerPayload(choiceOnly, {}), null);
   assert.deepEqual(answerPayload(choiceOnly, { optionId: 'yes', text: ' because ' }), { type: 'inbox-answer', id: choiceOnly.id, optionId: 'yes', text: 'because' });
   assert.equal(answerPayload(choiceOnly, { optionId: 'nope' }), null);
-  assert.equal(answerPayload(choiceOnly, { text: 'note without a choice' }), null);
+  assert.deepEqual(answerPayload(choiceOnly, { text: ' another approach ' }), { type: 'inbox-answer', id: choiceOnly.id, text: 'another approach' });
+  assert.equal(answerPayload(choiceOnly, { text: ' \n ' }), null);
+  assert.equal(answerPayload(choiceOnly, { text: 'x'.repeat(4000) }).text.length, 4000);
+  assert.equal(answerPayload(choiceOnly, { text: 'x'.repeat(4001) }), null);
+  assert.equal(answerPayload(choiceOnly, { optionId: 'nope', text: 'another approach' }), null);
   assert.deepEqual(answerPayload(choiceOnly, { optionId: 'yes', text: '  \n ' }), { type: 'inbox-answer', id: choiceOnly.id, optionId: 'yes' });
   assert.equal(answerPayload(choiceOnly, { optionId: 'yes', text: 'x'.repeat(4001) }), null);
   assert.equal(answerPayload(choiceOnly, { optionId: 'yes', text: 'x'.repeat(4000) }).text.length, 4000);

@@ -94,9 +94,9 @@ These are checked against `server/extensions/index.js` (`validateManifest`), `se
   urgency, dedupeKey, expiresInMinutes }`. `dedupeKey` is the agent's raw key or `null`. The
   caller adds `sessionId`/`taskId`, prefixes the key as `agent:<sid>:<key>` and turns
   `expiresInMinutes` into `expiresAt`.
-- With options, `allowFreeText` defaults to `false` unless the agent sets it. With none, it is
-  forced `true`. An option without an `id` gets a slug of its label (or `option-N`). Explicit ids
-  must be unique.
+- `allow_free_text` is a deprecated, ignored compatibility parameter (still boolean-validated).
+  Every new or normalized item has `allowFreeText: true`, including saved items with `false`.
+  An option without an `id` gets a slug of its label (or `option-N`). Explicit ids must be unique.
 - `create` without a `dedupeKey` gives an agent item `agent:<sid>:<item id>`. A status item must
   bring its own (`status:<sid>:<episode>`). `create` refuses a second **open** item with the same
   `dedupeKey`.
@@ -104,7 +104,7 @@ These are checked against `server/extensions/index.js` (`validateManifest`), `se
   the source invariants) and throws only on what can't be repaired. `create` and `update` both
   run it. Agent input must go through `validateAgentRequest` first, which rejects instead.
 - `answer` checks the answer with `validateAnswer`: the option must exist, an optional note
-  may accompany any choice, text without a choice needs `allowFreeText`, text is ≤ 4000,
+  may accompany any choice, standalone nonempty text is always allowed, text is ≤ 4000,
   and an item without options needs text. So `inbox-answer`
   can rely on `store.answer` throwing a message fit for a toast.
 - `setDelivery` counts an attempt on every `delivered`/`failed` (`answer.attempts`); `pending`

@@ -19,7 +19,7 @@ export const DESCRIPTION =
   + 'recommendation in the body, when the choice is irreversible. Bad: "Finished the refactor, all '
   + 'tests pass" (that is a status update: say it in chat). '
   + 'Give a one-line title, put context, trade-offs and your recommendation in the body, and offer '
-  + '2-4 options where there is a choice. If you are about to end your turn by asking the human to '
+  + '2-4 options where there is a choice. The human can always reply with standalone text instead, or add a note to a selected option. If you are about to end your turn by asking the human to '
   + 'choose (next steps, "should I proceed?"), call this, and also write the question, its options '
   + 'and your recommendation in your reply: the human may be chatting with you and should not have '
   + 'to switch to the queue. Don\'t tell them it is in their "Needs you" queue: the board shows them. If they answer in chat, call withdraw_human_request. Asking again with the same dedupe_key updates your earlier request instead of adding one. '
@@ -39,8 +39,8 @@ export const inputSchema = {
   kind: z.enum(AGENT_KINDS).describe('decision: choose between approaches; approval: OK an irreversible or outward-facing action; question: information only the human has; action: something only the human can do (e.g. click an OAuth consent).'),
   title: z.string().min(1).max(LIMITS.title).describe('One line: the decision or action needed.'),
   body: z.string().max(LIMITS.body).optional().describe('Markdown: the context, the trade-offs and what you recommend.'),
-  options: z.array(optionSchema).max(LIMITS.options).optional().describe('2-4 choices where there is one. Omit for a free-text answer.'),
-  allow_free_text: z.boolean().optional().describe('With options, allow a free-text answer instead of a choice. An optional note can always accompany a choice. Default false; always true without options.'),
+  options: z.array(optionSchema).max(LIMITS.options).optional().describe('2-4 suggested choices where there is one. The human can always answer with text instead.'),
+  allow_free_text: z.boolean().optional().describe('Deprecated compatibility parameter; ignored. Every request allows a standalone text answer or an optional note with a selected choice.'),
   blocking: z.boolean().optional().describe('Whether you are stopping until the answer arrives. Default true: end your turn after the call.'),
   urgency: z.enum(URGENCIES).optional().describe('high only when waiting is costly (e.g. something is broken or a deadline is close).'),
   dedupe_key: z.string().max(LIMITS.dedupeKey).optional().describe('Your own stable key for this need. Asking again with it updates the open request in place.'),
