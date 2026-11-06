@@ -393,7 +393,7 @@ test('clearing a choice preserves drafts through ticks and re-renders for text-o
     assert.equal(v.q('.ibx-option').getAttribute('aria-checked'), 'true');
     assert.equal(v.q('.ibx-send').disabled, false);
     const clear = v.q('.ibx-clear-choice');
-    assert.equal(text(clear), 'Use text only');
+    assert.equal(text(clear), 'Clear');
     clear.click();
     assert.equal(v.q('.ibx-option').getAttribute('aria-checked'), 'false');
     assert.equal(v.q('.ibx-text').value, ' after lunch ');
