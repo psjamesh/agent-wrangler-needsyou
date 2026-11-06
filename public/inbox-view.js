@@ -13,6 +13,7 @@
 // - The ~4 s graph tick patches in place. Queue rows are keyed (inbox-dom.js),
 //   and the detail pane is rebuilt only when what it shows changes, so scroll,
 //   focus and a half-typed answer survive a tick.
+import { presentItems, loadPreferences, savePreferences } from './inbox-presentation.js';
 import { ICONS, kindIcon } from './icons.js';
 import { patchList, setText, setAttr, setClass } from './inbox-dom.js';
 import { preferTerminal, temporarilyPreferTerminal, wantsTerminal } from './inbox-session-view.js';
@@ -29,6 +30,7 @@ const SEND_TIMEOUT_MS = 10000;
 const DISMISS_WARNING = 'The agent will not be told.';
 const TWO_PANES_PX = 900; // styles.css: the narrow layout is a container query below this
 const FILTER_KEY = 'needsyou.filter';
+let groupHeadingId = 0;
 
 const EMPTY_TEXT = {
   open: 'Nothing needs you right now.',
@@ -46,6 +48,11 @@ const SHELL_HTML = `
         <button type="button" class="ibx-filter" data-filter="open" aria-pressed="true">Open</button>
         <button type="button" class="ibx-filter" data-filter="closed" aria-pressed="false">Closed</button>
         <button type="button" class="ibx-filter" data-filter="all" aria-pressed="false">All</button>
+      </div>
+      <div class="ibx-presentation" role="group" aria-label="List presentation">
+        <label>Group <select class="ibx-group"><option value="none">None</option><option value="task">Task</option><option value="type">Type</option></select></label>
+        <label>Sort <select class="ibx-sort"><option value="recommended">Recommended</option><option value="type">Type</option><option value="waiting">Time waiting</option></select></label>
+        <label>Direction <select class="ibx-direction"><option value="asc">Asc</option><option value="desc">Desc</option></select></label>
       </div>
     </header>
     <div class="ibx-queue" role="listbox" tabindex="-1" aria-label="Open items"></div>
@@ -107,6 +114,7 @@ export function createInboxView(el, api, {
   let closed = []; // closed items, newest close first
   let prevOrderIds = [];
   let filter = loadFilter(storage);
+  let preferences = loadPreferences(storage);
   let selectedId = null;
   // The selection is the list's first item, picked for a two-pane layout,
   // not one the human opened: it is not marked read, and `n` starts on it.
@@ -135,7 +143,9 @@ export function createInboxView(el, api, {
   const selected = () => (selectedId ? order.find((i) => i.id === selectedId) || closed.find((i) => i.id === selectedId) || null : null);
   const selectable = (id) => order.some((i) => i.id === id) || closed.some((i) => i.id === id);
   // The list showing, which is also what j/k walk.
-  const shown = () => (filter === 'closed' ? closed : filter === 'all' ? [...order, ...closed] : order);
+  const groupsFor = (f) => presentItems(items, graph, f, preferences);
+  const orderedOpen = () => groupsFor('open').flatMap((g) => g.items);
+  const shown = () => groupsFor(filter).flatMap((g) => g.items);
   const isShown = (id) => shown().some((i) => i.id === id);
   const visible = () => !disposed && !pageHidden && root.isConnected && !el.closest('.hidden, [hidden]');
 
@@ -184,6 +194,45 @@ export function createInboxView(el, api, {
     setText(row.querySelector('.ibx-closed-reason'), done && item.state === 'resolved' ? resolvedLabel(item) : '');
     setText(row.querySelector('.ibx-row-age'), done ? closedLabel(item, now()) : waitingLabel(item, now()));
     setAttr(row.querySelector('.ibx-dot'), 'title', unread ? 'Unread' : null);
+  }
+
+  function renderList(groups) {
+    const active = doc.activeElement;
+    const focusedRow = queueEl.contains(active);
+    const rows = new Map([...queueEl.querySelectorAll('.ibx-row')].map((row) => [row.dataset.ibxKey, row]));
+    const patchRows = (target, entries) => {
+      for (const item of entries) {
+        const row = rows.get(item.id);
+        if (row && row.parentElement !== target) target.appendChild(row);
+      }
+      patchList(target, entries, { key: (i) => i.id, create: createRow, update: updateRow, leaveMs, schedule });
+    };
+    if (preferences.group === 'none') {
+      patchRows(queueEl, groups.flatMap((g) => g.items));
+      for (const group of queueEl.querySelectorAll('.ibx-item-group')) group.remove();
+    } else {
+      const wrappers = new Map([...queueEl.querySelectorAll('.ibx-item-group')].map((node) => [node.dataset.ibxKey, node]));
+      for (const group of groups) {
+        let wrapper = wrappers.get(group.key);
+        if (!wrapper) {
+          wrapper = make('div', 'ibx-item-group');
+          wrapper.dataset.ibxKey = group.key;
+          const heading = make('h3', 'ibx-group-heading');
+          heading.setAttribute('role', 'presentation');
+          heading.id = `ibx-group-heading-${++groupHeadingId}`;
+          const list = make('div', 'ibx-group-items');
+          list.setAttribute('role', 'group');
+          list.setAttribute('aria-labelledby', heading.id);
+          wrapper.setAttribute('role', 'presentation');
+          wrapper.append(heading, list);
+          wrappers.set(group.key, wrapper);
+        }
+        setText(wrapper.querySelector('.ibx-group-heading'), group.label);
+        patchRows(wrapper.querySelector('.ibx-group-items'), group.items);
+      }
+      patchList(queueEl, groups, { key: (g) => g.key, create: (g) => wrappers.get(g.key), update: () => {} });
+    }
+    if (focusedRow && active.isConnected && doc.activeElement !== active) active.focus({ preventScroll: true });
   }
 
   // The head's age: how long a live item has waited, or when a read-only one
@@ -698,8 +747,9 @@ export function createInboxView(el, api, {
   function next() {
     if (!order.length) return;
     if (filter !== 'open') setFilter('open');
-    const top = order[0].id;
-    const target = selectedId === top && !autoPicked && order.length > 1 ? order[1].id : top;
+    const list = orderedOpen();
+    const top = list[0].id;
+    const target = selectedId === top && !autoPicked && list.length > 1 ? list[1].id : top;
     select(target, { open: true, focus: true });
   }
 
@@ -733,6 +783,16 @@ export function createInboxView(el, api, {
   });
   for (const b of filterBtns) {
     b.addEventListener('click', () => { setFilter(b.dataset.filter); render(); });
+  }
+  for (const key of ['group', 'sort', 'direction']) {
+    const control = q(`.ibx-${key}`);
+    control.value = preferences[key];
+    control.addEventListener('change', () => {
+      preferences = { ...preferences, [key]: control.value };
+      savePreferences(storage, preferences);
+      prevOrderIds = orderedOpen().map((i) => i.id);
+      render();
+    });
   }
   backBtn.addEventListener('click', () => {
     detailOpen = false;
@@ -813,7 +873,9 @@ export function createInboxView(el, api, {
     setAttr(queueEl, 'aria-label', LIST_LABEL[filter]);
     setText(emptyEl, EMPTY_TEXT[filter]);
     emptyEl.hidden = list.length > 0;
-    patchList(queueEl, list, { key: (i) => i.id, create: createRow, update: updateRow, leaveMs, schedule });
+    setClass(queueEl, `ibx-queue${preferences.sort === 'recommended' ? ' ibx-recommended' : ''}`);
+    q('.ibx-direction').disabled = preferences.sort === 'recommended';
+    renderList(groupsFor(filter));
     renderDetail();
     markRead();
   }
@@ -840,7 +902,7 @@ export function createInboxView(el, api, {
     const wasQueued = selectedId != null && prevOrderIds.includes(selectedId);
     if (selectedId && !order.some((i) => i.id === selectedId) && (wasQueued || !closed.some((i) => i.id === selectedId))) {
       const wasAuto = autoPicked;
-      setSelected(nextAfter(prevOrderIds, selectedId, order));
+      setSelected(nextAfter(prevOrderIds, selectedId, orderedOpen()));
       autoPicked = wasAuto && selectedId != null;
       advanced = wasQueued;
       if (!selectedId) detailOpen = false;
@@ -848,11 +910,11 @@ export function createInboxView(el, api, {
     if (pendingId && selectable(pendingId)) {
       const focus = wantFocus;
       wantFocus = false;
-      prevOrderIds = order.map((i) => i.id);
+      prevOrderIds = orderedOpen().map((i) => i.id);
       select(pendingId, { open: true, focus });
       return;
     }
-    prevOrderIds = order.map((i) => i.id);
+    prevOrderIds = orderedOpen().map((i) => i.id);
     render();
     if (advanced && hadFocus && visible()) focusPrimary();
   }

@@ -1422,3 +1422,146 @@ test('all agent kinds offer standalone text despite old false metadata', () => {
     assert.deepEqual(v.sent.at(-1), { type: 'inbox-answer', id: d.id, text: 'x'.repeat(4000) });
   }
 });
+
+function preference(v, name, value) {
+  const control = v.q(`.ibx-${name}`);
+  assert.ok(control, `${name} control exists`);
+  control.value = value;
+  control.dispatchEvent(new v.window.Event('change', { bubbles: true }));
+  return control;
+}
+
+const groupLabels = (v) => [...v.el.querySelectorAll('.ibx-group-heading')].map(text);
+
+test('presentation controls label native selects, persist across remounts, and apply to each filter', () => {
+  const storage = new Window({ url: 'http://localhost/' }).localStorage;
+  const v = mountView({ storage });
+  const data = [item({ id: 'open', kind: 'question', createdAt: 10 }),
+    item({ id: 'closed', kind: 'action', state: 'resolved', createdAt: 20 })];
+  v.view.update(graphOf(data));
+  for (const name of ['group', 'sort', 'direction']) {
+    const control = v.q(`.ibx-${name}`);
+    assert.ok(control?.closest('label')?.textContent.trim());
+  }
+  assert.equal(v.q('.ibx-direction').disabled, true);
+  preference(v, 'group', 'type');
+  preference(v, 'sort', 'waiting');
+  preference(v, 'direction', 'desc');
+  v.filter('all').click();
+  assert.deepEqual(groupLabels(v), ['Action', 'Question']);
+  assert.deepEqual(ids(v.rows()), ['closed', 'open']);
+  v.view.unmount();
+  const again = mountView({ storage });
+  again.view.update(graphOf(data));
+  assert.equal(again.q('.ibx-group').value, 'type');
+  assert.equal(again.q('.ibx-sort').value, 'waiting');
+  assert.equal(again.q('.ibx-direction').value, 'desc');
+  assert.equal(again.q('.ibx-direction').disabled, false);
+  assert.equal(again.filter('all').getAttribute('aria-pressed'), 'true');
+  assert.deepEqual(ids(again.rows()), ['closed', 'open']);
+  again.filter('closed').click();
+  assert.deepEqual(groupLabels(again), ['Action']);
+  assert.deepEqual(ids(again.rows()), ['closed']);
+  again.filter('open').click();
+  assert.deepEqual(groupLabels(again), ['Question']);
+  preference(again, 'sort', 'recommended');
+  assert.equal(again.q('.ibx-direction').disabled, true);
+  assert.deepEqual(ids(again.rows()), ['open']);
+});
+
+test('keyboard navigation and next actionable selection follow groups and explicit sort', () => {
+  const v = mountView();
+  const data = [item({ id: 'z', kind: 'question', createdAt: 30 }),
+    statusItem({ id: 'p', createdAt: 20 }), item({ id: 'a', kind: 'action', createdAt: 10 })];
+  v.view.update(graphOf(data));
+  preference(v, 'group', 'type');
+  preference(v, 'sort', 'waiting');
+  preference(v, 'direction', 'desc');
+  assert.deepEqual(ids(v.rows()), ['a', 'p', 'z']);
+  v.root.focus();
+  v.press('j');
+  assert.equal(v.view.selectedId, 'a');
+  v.press('ArrowDown');
+  assert.equal(v.view.selectedId, 'p');
+  v.press('j');
+  assert.equal(v.view.selectedId, 'z');
+  v.press('k');
+  assert.equal(v.view.selectedId, 'p');
+  v.view.next();
+  assert.equal(v.view.selectedId, 'a');
+  v.filter('closed').click();
+  v.view.next();
+  assert.equal(v.view.selectedId, 'a');
+  v.view.select('p');
+  v.view.update(graphOf(data.map((i) => i.id === 'p' ? { ...i, state: 'resolved' } : i)));
+  assert.equal(v.view.selectedId, 'z', 'resolution advances to the next visual open row');
+});
+
+test('task regrouping preserves keyed rows, selected drafts and focus through metadata changes', () => {
+  const v = mountView();
+  const data = [item({ id: 'one', sessionId: 's1' }), item({ id: 'two', sessionId: 's2' }), item({ id: 'three', sessionId: 's3' })];
+  const sessions = { s1: { name: 'One', taskId: 'a', taskName: 'Same' }, s2: { name: 'Two', taskId: 'b', taskName: 'Same' }, s3: { name: 'Three', taskId: null } };
+  v.view.update(graphOf(data, { sessions }));
+  const rows = v.rows();
+  v.view.select('one');
+  const input = v.q('.ibx-text');
+  input.value = 'Keep this draft';
+  input.dispatchEvent(new v.window.Event('input', { bubbles: true }));
+  input.focus();
+  input.setSelectionRange(4, 8);
+  preference(v, 'group', 'task');
+  assert.deepEqual(groupLabels(v), ['No task', 'Same', 'Same']);
+  assert.equal(v.document.activeElement, input);
+  assert.equal(v.q('.ibx-text'), input, 'changing preferences does not rebuild selected detail');
+  assert.equal(input.selectionStart, 4);
+  sessions.s1 = { name: 'One', taskId: 'b', taskName: 'Renamed' };
+  sessions.s2.taskName = 'Renamed';
+  v.view.update(graphOf(data, { sessions }));
+  assert.deepEqual(groupLabels(v), ['No task', 'Renamed']);
+  assert.equal(v.view.selectedId, 'one');
+  assert.equal(v.q('.ibx-text').value, 'Keep this draft');
+  assert.equal(v.document.activeElement, v.q('.ibx-text'));
+  for (const row of rows) assert.equal(v.rows().find((r) => r.dataset.id === row.dataset.id), row);
+  v.rows().find((r) => r.dataset.id === 'one').focus();
+  sessions.s1 = { ...sessions.s1, taskId: 'c', taskName: 'Alpha' };
+  v.view.update(graphOf(data, { sessions }));
+  assert.equal(v.document.activeElement, rows[0], 'moving a row to another group keeps row focus');
+  preference(v, 'group', 'none');
+  assert.deepEqual(groupLabels(v), []);
+  assert.equal(v.document.activeElement, rows[0]);
+  v.view.update(graphOf([]));
+  assert.equal(v.q('.ibx-item-group'), null, 'no stale headings on an empty list');
+});
+
+test('group labels name option groups safely and all options remain in a single listbox', () => {
+  const v = mountView();
+  const data = [item({ id: 'one', sessionId: 's1' }), item({ id: 'two', sessionId: 's2' })];
+  v.view.update(graphOf(data, { sessions: { s1: { taskId: 'a', taskName: XSS }, s2: { taskId: 'b', taskName: 'Beta' } } }));
+  preference(v, 'group', 'task');
+  assert.equal(v.el.querySelectorAll('[role="listbox"]').length, 1);
+  const groups = [...v.el.querySelectorAll('.ibx-queue [role="group"]')];
+  assert.equal(groups.length, 2);
+  for (const group of groups) {
+    const heading = v.document.getElementById(group.getAttribute('aria-labelledby'));
+    assert.ok(heading?.textContent);
+    assert.equal(heading.getAttribute('role'), 'presentation', 'a listbox owns groups/options, not heading roles');
+    assert.ok(group.querySelector('[role="option"]'));
+  }
+  assert.equal(v.q('.ibx-queue img'), null);
+  assert.ok(groupLabels(v).includes(XSS));
+  v.filter('closed').click();
+  assert.deepEqual(groupLabels(v), []);
+});
+
+test('blocked storage still permits presentation changes and native select keys stay native', () => {
+  const denied = { getItem() { throw Error('denied'); }, setItem() { throw Error('denied'); } };
+  const v = mountView({ storage: denied });
+  v.view.update(graphOf([item({ id: 'q', kind: 'question' }), item({ id: 'a', kind: 'action' })]));
+  assert.equal(v.q('.ibx-group').value, 'none');
+  assert.equal(v.q('.ibx-sort').value, 'recommended');
+  const select = preference(v, 'sort', 'type');
+  assert.deepEqual(ids(v.rows()), ['a', 'q']);
+  select.focus();
+  assert.equal(v.press('ArrowDown').defaultPrevented, false);
+  assert.equal(v.view.selectedId, null);
+});

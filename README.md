@@ -101,7 +101,7 @@ Use these keys in the **Needs you** view:
 
 | Key | What it does |
 | --- | --- |
-| `n` | Go to the top item, the one that has waited at the highest cost. If you are on it already, go to the second item |
+| `n` | Go to the first open item in your chosen grouping and order. If you are on it already, go to the second item |
 | `j` or `↓` | Go down the list |
 | `k` or `↑` | Go up the list |
 | `1` to `6` | Choose an option. Then press `Enter` to send it |
@@ -117,8 +117,26 @@ Use the buttons at the top of the list to choose what it shows:
 
 - **Open** shows what needs you now. This is where the list starts.
 - **Closed** shows items that closed in the last 24 hours, with the most
-  recently closed first.
-- **All** shows open items, then closed items.
+  recently closed first by default.
+- **All** shows open items, then closed items by default.
+
+Use **Group** to choose **None**, **Task** or **Type**, and **Sort** to choose
+**Recommended**, **Type** or **Time waiting**. **Asc** and **Desc** set the direction
+for Type and Time waiting. Ascending time waiting puts the shortest wait first;
+descending puts the longest first. Waiting is measured from when the request
+was created, including for closed items.
+
+Groups are alphabetic; sorting applies within each group. Type uses the label
+shown on the item, such as Permission, Sign-in or Decision. Task follows the
+session's current task, with **No task** when task metadata is unavailable.
+Distinct tasks stay separate even if their names match. Controls apply to the
+chosen Open, Closed or All list. Recommended keeps the existing priority for
+open items and the most recently closed first for closed items.
+
+The filter, grouping, sort and direction are remembered in this browser,
+including after a page reload or Agent Wrangler restart. They are specific to
+this browser and board address. If browser storage is unavailable, you can still
+change them for the current view.
 
 Select a closed item to see what was asked, what you chose and how it closed.
 You cannot change a closed item.

@@ -5,7 +5,7 @@ The non-obvious decisions behind `public/index.js`, `public/inbox-*.js`,
 
 ## Queue order and states
 
-- Tiers (0.1.2, F4): every status item **and** every high-urgency agent request
+- Recommended order uses tiers: every status item **and** every high-urgency agent request
   are tier 0, oldest first. So an urgent request raised after older status
   items sorts below them, but above every other request. Then come normal
   blocking requests, then non-blocking ones, then failed deliveries.
@@ -24,13 +24,13 @@ The non-obvious decisions behind `public/index.js`, `public/inbox-*.js`,
   nothing on a desktop. The `n` key stays.
 - An answer still being delivered leaves the queue and shows as "sending"
   under **Closed**. A failed delivery comes back as the last tier of
-  the queue, with **Retry**.
+  recommended queue, with **Retry**.
 - "Unread" decides only the row dot, never the order or the badge.
 
 ## Keyboard and focus
 
 - Number keys pick an option and focus **Send**, so `Enter` sends. `n` jumps to
-  the **top** item of the queue, not to the item below the selection. On the
+  the **top open** item in the chosen grouping and order. On the
   top item it moves to the second. On an auto-picked first item it opens that
   item first.
 - Keys are scoped to the view and stop propagating, so the board's own
@@ -171,10 +171,10 @@ remain the board's own.
   strip. One listbox (`.ibx-queue`) shows the chosen list, and its aria-label
   follows the filter. The choice is kept in `localStorage` (`needsyou.filter`),
   inside try/catch, and an unknown value falls back to Open.
-- **Closed** is sorted by when each item closed, newest first (the human's
-  rule): `closedAt` is `updatedAt`, which the store sets on close and never
-  changes afterwards, or `answer.at` for an answer still sending. **All** is
-  Open then Closed, with a hairline between them.
+- **Closed** defaults to when each item closed, newest first: `closedAt` is `updatedAt`, which the store sets on close and never
+  changes afterwards, or `answer.at` for an answer still sending. **All** defaults to
+  Open then Closed, with a hairline between them. Explicit sorting orders all
+  visible items together. Grouping splits that ordered list into named groups.
 - Closed rows show the reason and "closed 5m ago" (or "sending"). At 375 px
   the reason is hidden in rows to keep room for the title.
 - `n` always means the top **open** item: from Closed or All it switches to
@@ -193,6 +193,43 @@ remain the board's own.
 - `j`/`k` walk the list on screen. A resolved item stays selected across
   ticks. A queued item that
   leaves the queue still moves the selection on, as before.
+
+## Grouping and sorting
+
+`inbox-presentation.js` filters first, then sorts and groups the visible items.
+The view's **Group** choices are None, Task and Type. **Sort** offers Recommended,
+Type and Time waiting, with Asc/Desc enabled for explicit sorts. Type compares
+`itemLabel`, including passive Permission, Sign-in, Error and other visible
+labels. Ascending waiting compares creation timestamps newest first (shortest
+elapsed wait); descending puts oldest first. This also applies to closed items.
+Equal explicit sort values use ascending item ids, independent of direction.
+Recommended retains the Open/Closed/All ordering described above.
+
+Task grouping uses `graph.inbox.sessions[sessionId]` for both the current task id
+and name, matching the row's task metadata. Distinct ids remain separate even
+when names match. Missing task identity or name falls into No task. Type groups
+share a group when their visible labels match. Group headings stay alphabetic,
+with group keys breaking equal-name ties; direction applies only within groups.
+No task is alphabetized with the other headings.
+
+Validated preferences live at `needsyou.presentation` in per-origin localStorage,
+separate from `needsyou.filter`. Missing, corrupt or inaccessible storage falls
+back to None/Recommended/Asc; individual invalid fields fall back independently.
+Storage write failures leave the current controls usable. Remounting restores
+saved controls. Preferences affect this view, including its `n`, `j`/`k` and
+resolution advancement, while card pills and toasts retain queue priority.
+
+Grouped lists keep one listbox, with named option groups linked to visible
+headings. Keyed rows move between groups without being recreated; unused groups
+are removed immediately so empty headings cannot linger. Preference changes
+leave selection and detail intact. Graph metadata updates can rebuild detail
+using the existing draft and focus restoration. Native select keys do not
+trigger list navigation. Open/Closed separators appear only for Recommended.
+
+The presentation model tests cover directions, ties, filters, duplicate task
+names, changing/missing task metadata and storage failures. DOM tests cover
+remount persistence, accessible groups, keyboard order, resolution advancement,
+keyed row reuse and selected draft/focus preservation.
 
 ## Card menu and spawner names
 
