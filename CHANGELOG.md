@@ -13,6 +13,12 @@
   request shows it after "withdrawn by agent", and `list_my_human_requests`
   returns it as `resolvedNote`.
 
+### Changed
+
+- New agent requests are limited to 3 per session per ten minutes again by
+  default. Set **New requests per ten minutes** to **0** to keep the 0.1.17
+  behaviour.
+
 ## 0.1.17
 
 ### Changed
