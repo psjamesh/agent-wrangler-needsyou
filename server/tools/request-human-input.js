@@ -9,8 +9,6 @@ import { okResult, errorResult, NO_IDENTITY } from './result.js';
 // skill is; agent-wrangler measured a tool description alone at 0/6), but it
 // is what they read when they call it, so it says plainly what is NOT for it.
 
-export const RATE_LIMIT = Object.freeze({ max: 3, windowMs: 10 * 60_000 });
-
 export const DESCRIPTION =
   'Ask the human for a decision, approval, missing information or a manual action, as an item in '
   + 'their "Needs you" queue. Use only when you cannot proceed correctly without the human\'s decision '
@@ -57,20 +55,7 @@ function nextStep(blocking) {
     : `Request queued in the human's "Needs you" queue. ${ALSO_IN_CHAT} Carry on with work that does not depend on it; the answer will arrive as a message starting \`[Needs you]\`.`;
 }
 
-// A factory so each instance (and each test) has its own rate-limit memory and
-// clock. The limit counts NEW item ids per session; dedupe updates and refused
-// calls never reach it.
 export function makeRequestHumanInputTool({ now = Date.now } = {}) {
-  const recent = new Map(); // sessionId -> creation times inside the window
-
-  const inWindow = (sid) => {
-    const since = now() - RATE_LIMIT.windowMs;
-    const times = (recent.get(sid) ?? []).filter((t) => t > since);
-    if (times.length) recent.set(sid, times);
-    else recent.delete(sid);
-    return times;
-  };
-
   return {
     name: 'request_human_input',
     description: DESCRIPTION,
@@ -102,10 +87,6 @@ export function makeRequestHumanInputTool({ now = Date.now } = {}) {
         return okResult({ id: item.id, state: item.state, blocking: item.blocking, updated: true }, nextStep(item.blocking));
       }
 
-      if (inWindow(caller).length >= RATE_LIMIT.max) {
-        return errorResult('Too many separate requests — batch related questions into one request with options.');
-      }
-
       let item;
       try {
         item = store.create({
@@ -120,7 +101,6 @@ export function makeRequestHumanInputTool({ now = Date.now } = {}) {
       } catch (err) {
         return errorResult(`${err.message}. Withdraw a request you no longer need with withdraw_human_request, or wait for the human's answers.`);
       }
-      recent.set(caller, [...inWindow(caller), now()]);
       await host.rebuild();
       return okResult({ id: item.id, state: item.state, blocking: item.blocking, updated: false }, nextStep(item.blocking));
     },

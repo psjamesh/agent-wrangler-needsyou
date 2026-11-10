@@ -5,11 +5,9 @@ The non-obvious decisions behind `server/tools/`, `server/answer.js`,
 
 ## `request_human_input`
 
-- **The order of checks:** identity → canAsk → validate → dedupe update → rate
-  limit → create. A refusal, a validation failure, a dedupe update or a cap
-  refusal doesn't count towards the rate limit (3 new items per session per 10
-  minutes), so an agent that restates or fixes a request is never throttled
-  for it.
+- **The order of checks:** identity → canAsk → validate → dedupe update → create.
+  The store's `maxOpenPerSession` setting is the only per-session limit. Dedupe
+  updates work at the cap; answering or withdrawing a request frees its slot.
 - **A dedupe update replaces the request wholesale**: title, body, options and
   the rest, except `kind`, which can't change. It keeps the item's id and read
   state, so the human isn't notified again.

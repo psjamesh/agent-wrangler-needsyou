@@ -2,7 +2,6 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { z } from 'zod';
 import { inboxTools, makeInboxTools } from './index.js';
-import { RATE_LIMIT } from './request-human-input.js';
 import { RECENT_MS } from './list-my-human-requests.js';
 import { fakeHost, seq, clock } from '../test-helpers.js';
 
@@ -184,10 +183,9 @@ test('request_human_input: dedupe keys are per session, and a closed item does n
 });
 
 test('request_human_input: the per-session cap comes back as advice', async () => {
-  const { request, as, store, now } = setup({ settings: { maxOpenPerSession: 2 } });
+  const { request, as, store } = setup({ settings: { maxOpenPerSession: 2 } });
   await request.handler(as('s1'), ask());
   await request.handler(as('s1'), ask());
-  now.tick(RATE_LIMIT.windowMs + 1);
   const out = await request.handler(as('s1'), ask());
   assert.equal(out.isError, true);
   assert.match(out.content[0].text, /already has 2 open inbox requests \(the limit is 2\)/);
@@ -197,39 +195,47 @@ test('request_human_input: the per-session cap comes back as advice', async () =
   assert.equal((await request.handler(as('s2'), ask())).isError, undefined);
 });
 
-test('request_human_input: at most three new requests per session per ten minutes', async () => {
-  const { request, as, now } = setup();
-  for (let i = 0; i < RATE_LIMIT.max; i++) assert.equal((await request.handler(as('s1'), ask())).isError, undefined);
+test('request_human_input: rapid requests succeed until the open cap', async () => {
+  const { request, as, store } = setup();
+  for (let i = 0; i < 5; i++) {
+    assert.equal((await request.handler(as('s1'), ask())).isError, undefined);
+  }
   const over = await request.handler(as('s1'), ask());
   assert.equal(over.isError, true);
-  assert.match(over.content[0].text, /Too many separate requests — batch related questions into one request with options\./);
-  assert.equal((await request.handler(as('s2'), ask())).isError, undefined, 'another session has its own budget');
-  now.tick(RATE_LIMIT.windowMs);
-  assert.equal((await request.handler(as('s1'), ask())).isError, undefined, 'the window slides');
+  assert.match(over.content[0].text, /already has 5 open inbox requests \(the limit is 5\)/);
+  assert.match(over.content[0].text, /withdraw_human_request/);
+  assert.equal(store.openForSession('s1').length, 5);
+  assert.equal((await request.handler(as('s2'), ask())).isError, undefined);
 });
 
-test('request_human_input: dedupe updates and refusals do not count towards the rate limit', async () => {
-  const f = setup();
-  const { request, as, store } = f;
-  await request.handler(as('s1'), ask({ dedupe_key: 'same' }));
-  for (let i = 0; i < 5; i++) assert.equal((await request.handler(as('s1'), ask({ dedupe_key: 'same' }))).structuredContent.updated, true);
-  for (let i = 0; i < 5; i++) assert.equal((await request.handler(as('s1'), ask({ title: '' }))).isError, true);
-  store.setCanAskOverride('s1', false);
-  for (let i = 0; i < 5; i++) assert.equal((await request.handler(as('s1'), ask())).isError, true);
-  store.setCanAskOverride('s1', null);
-  // One counted so far: two more new ids fit before the limit.
-  assert.equal((await request.handler(as('s1'), ask())).isError, undefined);
-  assert.equal((await request.handler(as('s1'), ask())).isError, undefined);
+test('request_human_input: dedupe updates work at the open cap', async () => {
+  const { request, as, store } = setup({ settings: { maxOpenPerSession: 1 } });
+  const first = await request.handler(as('s1'), ask({ dedupe_key: 'same' }));
+  for (let i = 0; i < 5; i++) {
+    const updated = await request.handler(as('s1'), ask({ dedupe_key: 'same', body: `Context ${i}` }));
+    assert.equal(updated.structuredContent.id, first.structuredContent.id);
+    assert.equal(updated.structuredContent.updated, true);
+  }
+  assert.equal(store.openForSession('s1').length, 1);
   assert.equal((await request.handler(as('s1'), ask())).isError, true);
 });
 
-test('request_human_input: a cap refusal does not count towards the rate limit', async () => {
-  const { request, withdraw, as } = setup({ settings: { maxOpenPerSession: 1 } });
-  const first = await request.handler(as('s1'), ask());
-  for (let i = 0; i < 4; i++) assert.match((await request.handler(as('s1'), ask())).content[0].text, /the limit is 1/);
-  await withdraw.handler(as('s1'), { id: first.structuredContent.id });
-  assert.equal((await request.handler(as('s1'), ask())).isError, undefined);
-});
+for (const close of ['answer', 'withdraw']) {
+  test(`request_human_input: ${close} frees a slot immediately`, async () => {
+    const { request, withdraw, as, store } = setup({ settings: { maxOpenPerSession: 1 } });
+    for (let i = 0; i < 6; i++) {
+      const created = await request.handler(as('s1'), ask());
+      assert.equal(created.isError, undefined);
+      const { id } = created.structuredContent;
+      const refused = await request.handler(as('s1'), ask());
+      assert.equal(refused.isError, true);
+      assert.match(refused.content[0].text, /the limit is 1/);
+      if (close === 'answer') store.answer(id, { text: 'Proceed' });
+      else assert.equal((await withdraw.handler(as('s1'), { id })).isError, undefined);
+      assert.equal(store.openForSession('s1').length, 0);
+    }
+  });
+}
 
 test('withdraw_human_request closes the caller\'s own open request', async () => {
   const { request, withdraw, as, store, calls } = setup();

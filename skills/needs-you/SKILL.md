@@ -158,7 +158,6 @@ any closed in the last 24 hours, with the answer, so you can recover one you mis
   human will not see it.
 - **"The human has turned off direct requests from this session":** decide using
   your brief and sensible defaults, or stop and explain in chat what you need.
-- **"Too many separate requests":** batch related questions into one request with options.
 - **The open-request limit:** withdraw requests you no longer need, or wait for answers.
 
 ## If you launch sessions
