@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **Why a request was withdrawn.** `withdraw_human_request` now needs a
+  `reason`: one short sentence, such as "User answered in chat". The closed
+  request shows it after "withdrawn by agent", and `list_my_human_requests`
+  returns it as `resolvedNote`.
+
+
 ## 0.1.17
 
 ### Changed

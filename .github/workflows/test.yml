@@ -9,6 +9,14 @@ on:
 permissions:
   contents: read
 
+# npm's audit is a POST, which http-filter refuses on the read-only registry.
+env:
+  npm_config_audit: 'false'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 # Side by side, not nested: validate-manifest.mjs copies this checkout into a
 # fake extensions dir and runs the loader's import scan over every file in it,
 # so agent-wrangler must not live inside it.
@@ -24,22 +32,40 @@ jobs:
       matrix:
         # npm test hands node quoted globs, which Node expands from 21 on.
         node: [22, 24]
+    timeout-minutes: 10
     env:
       AW_REPO: ${{ github.workspace }}/agent-wrangler
     steps:
-      - uses: actions/checkout@v4
+      # First, so its pre step locks down egress before any other step runs.
+      - uses: portswigger-tim/safer-runner-action@d9772c3c7c5c0f8cd6cb7123e138120b11c12371 # v2.2.1
+        with:
+          mode: enforce
+          allowed-domains: |
+            registry.npmjs.org
+          # Read-only: installs and clones yes, publishes and pushes no. git
+          # fetches are a POST to git-upload-pack; pushes (git-receive-pack) fall
+          # through to the GET/HEAD rule and are refused.
+          http-filter: |
+            github.com:
+              "*": GET, HEAD
+              "*/git-upload-pack": POST
+            api.github.com:
+              "*": GET, HEAD
+            registry.npmjs.org:
+              "*": GET, HEAD
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: needsyou
           persist-credentials: false
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: PortSwigger/agent-wrangler
           ref: main
           path: agent-wrangler
           persist-credentials: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ matrix.node }}
           cache: npm
@@ -62,27 +88,62 @@ jobs:
   # reach main unchecked.
   gate:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      # First, so its pre step locks down egress before any other step runs.
+      - uses: portswigger-tim/safer-runner-action@d9772c3c7c5c0f8cd6cb7123e138120b11c12371 # v2.2.1
+        with:
+          mode: enforce
+          # Comments go here, never inside the block below: the action reads
+          # every word in it as a domain.
+          # gitleaks is a Go hook: pre-commit builds it from module downloads.
+          allowed-domains: |
+            registry.npmjs.org
+            pypi.org
+            files.pythonhosted.org
+            proxy.golang.org
+            storage.googleapis.com
+          # Read-only: installs and clones yes, publishes and pushes no. git
+          # fetches are a POST to git-upload-pack; pushes (git-receive-pack) fall
+          # through to the GET/HEAD rule and are refused.
+          http-filter: |
+            github.com:
+              "*": GET, HEAD
+              "*/git-upload-pack": POST
+            api.github.com:
+              "*": GET, HEAD
+            release-assets.githubusercontent.com:
+              "*": GET, HEAD
+            registry.npmjs.org:
+              "*": GET, HEAD
+            pypi.org:
+              "*": GET, HEAD
+            files.pythonhosted.org:
+              "*": GET, HEAD
+            proxy.golang.org:
+              "*": GET, HEAD
+            storage.googleapis.com:
+              "*": GET, HEAD
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: needsyou
           persist-credentials: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: needsyou/package-lock.json
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: '3.12'
+          python-version: '3.13'
 
       - run: npm ci --ignore-scripts
 
-      - run: pip install pre-commit
+      - run: pip install pre-commit==4.7.0
 
-      - run: pre-commit run --all-files --show-diff-on-failure
+      - run: pre-commit run --all-files --show-diff-on-failure --color=always
 
   # Boots agent-wrangler main with this checkout copied in as
   # extensions/needsyou, on a throwaway data dir and port, and drives it over
@@ -91,23 +152,51 @@ jobs:
   # missing frame or tool, or any flow that does not land in graph.inbox.
   boot-smoke:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     env:
       AW_REPO: ${{ github.workspace }}/agent-wrangler
     steps:
-      - uses: actions/checkout@v4
+      # First, so its pre step locks down egress before any other step runs.
+      - uses: portswigger-tim/safer-runner-action@d9772c3c7c5c0f8cd6cb7123e138120b11c12371 # v2.2.1
+        with:
+          mode: enforce
+          # azure.archive.ubuntu.com is the runner's apt mirror, for tmux. Its
+          # other apt sources (packages.microsoft.com, esm) stay blocked; apt
+          # only warns.
+          allowed-domains: |
+            registry.npmjs.org
+            azure.archive.ubuntu.com
+          # Read-only: installs and clones yes, publishes and pushes no. git
+          # fetches are a POST to git-upload-pack; pushes (git-receive-pack) fall
+          # through to the GET/HEAD rule and are refused.
+          http-filter: |
+            github.com:
+              "*": GET, HEAD
+              "*/git-upload-pack": POST
+            api.github.com:
+              "*": GET, HEAD
+            registry.npmjs.org:
+              "*": GET, HEAD
+            azure.archive.ubuntu.com:
+              "*": GET, HEAD
+          # The wrangler won't boot without tmux, which the runner image lacks,
+          # and apt-get needs sudo. Keeping it makes this job ADVISORY: egress
+          # is still filtered, but a root step could lift the filter.
+          disable-sudo: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: needsyou
           persist-credentials: false
 
       # Public repo over https: no token or secret is needed or passed.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: PortSwigger/agent-wrangler
           ref: main
           path: agent-wrangler
           persist-credentials: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: npm

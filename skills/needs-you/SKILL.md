@@ -15,7 +15,8 @@ are running in):
 
 - `request_human_input({ kind, title, body?, options?, allow_free_text?, blocking?, urgency?, dedupe_key?, expires_in_minutes? })`
   queues a request and returns its `id`
-- `withdraw_human_request({ id })` takes back a request that no longer needs the human
+- `withdraw_human_request({ id, reason })` takes back a request that no longer needs the human.
+  `reason` is one short sentence the human sees on the closed request
 - `list_my_human_requests()` lists your open, answered and recently closed requests, with answers
 
 ## Always say it in chat too
@@ -26,7 +27,8 @@ now. In your reply, write the question, the options and your recommendation,
 in the same words as the request. Don't say that you put it in their "Needs
 you" queue, or that they can answer there: the board already shows them, and
 the line is noise. If the human answers in chat, call
-`withdraw_human_request({ id })` straight away and carry on with their answer.
+`withdraw_human_request({ id, reason: "User answered in chat" })` straight away
+and carry on with their answer.
 
 ## When to use it
 
@@ -125,9 +127,17 @@ propose another approach.
 ## If you get the answer some other way
 
 If the human answers in your terminal or chat instead, call
-`withdraw_human_request({ id })` straight away, so the queue doesn't keep showing
-a question that is already settled. Do the same when the question goes away on
-its own.
+`withdraw_human_request({ id, reason })` straight away, so the queue doesn't keep
+showing a question that is already settled. Do the same when the question goes
+away on its own.
+
+The `reason` is one short sentence, at most 200 characters, that the human sees
+on the closed request. Say what settled it, for example:
+
+- "User answered in chat"
+- "Found the answer in the project docs"
+- "No longer needed: the task was cancelled"
+- "Replaced by a new request with more detail"
 
 ## When the human asks about a request
 
@@ -158,6 +168,7 @@ any closed in the last 24 hours, with the answer, so you can recover one you mis
   human will not see it.
 - **"The human has turned off direct requests from this session":** decide using
   your brief and sensible defaults, or stop and explain in chat what you need.
+- **"Too many separate requests":** batch related questions into one request with options.
 - **The open-request limit:** withdraw requests you no longer need, or wait for answers.
 
 ## If you launch sessions

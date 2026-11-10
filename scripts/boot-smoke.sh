@@ -50,6 +50,7 @@ HOME="$data/home" AW_DEV=1 AW_DATA_DIR="$data" AW_PORT="$port" \
   env -u CLAUDE_CONFIG_DIR -u CODEX_HOME -u AW_TMUX_SOCKET \
   node "$repo/server/index.js" > "$data/server.log" 2>&1 &
 pid=$!
+# shellcheck disable=SC2329 # called by the EXIT trap
 stop() {
   kill "$pid" 2>/dev/null
   wait "$pid" 2>/dev/null

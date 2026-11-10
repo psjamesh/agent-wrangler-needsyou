@@ -99,8 +99,18 @@ test('normaliseItem fills a complete item and clips text', () => {
   assert.equal('extra' in item, false);
   assert.deepEqual(Object.keys(item), [
     'id', 'source', 'kind', 'sessionId', 'taskId', 'title', 'body', 'options', 'allowFreeText', 'blocking', 'urgency',
-    'dedupeKey', 'state', 'resolvedReason', 'createdAt', 'updatedAt', 'readAt', 'expiresAt', 'answer',
+    'dedupeKey', 'state', 'resolvedReason', 'resolvedNote', 'createdAt', 'updatedAt', 'readAt', 'expiresAt', 'answer',
   ]);
+});
+
+test('normaliseItem keeps a resolved item\'s note single-lined and clipped, and drops it otherwise', () => {
+  const note = `  User answered\n  in chat ${'x'.repeat(LIMITS.resolvedNote)}`;
+  const closed = normaliseItem(base({ state: 'resolved', resolvedReason: 'withdrawn', resolvedNote: note }));
+  assert.match(closed.resolvedNote, /^User answered in chat x+…$/);
+  assert.equal(closed.resolvedNote.length, LIMITS.resolvedNote);
+  assert.equal(normaliseItem(base({ state: 'resolved', resolvedReason: 'withdrawn', resolvedNote: '  ' })).resolvedNote, null);
+  assert.equal(normaliseItem(base({ state: 'resolved', resolvedReason: 'withdrawn' })).resolvedNote, null);
+  assert.equal(normaliseItem(base({ resolvedNote: 'stale' })).resolvedNote, null);
 });
 
 test('normaliseItem keeps the status/source invariants', () => {

@@ -176,8 +176,9 @@ try {
   const mine = await human.c.callTool({ name: 'list_my_human_requests', arguments: {} });
   if (mine.structuredContent?.requests?.some((r) => r.id === id)) ok('MCP tools/call list_my_human_requests lists it');
   else fail(`list_my_human_requests: ${JSON.stringify(mine).slice(0, 300)}`);
-  const gone = await human.c.callTool({ name: 'withdraw_human_request', arguments: { id } });
-  if (!gone.isError && store.get(id)?.resolvedReason === 'withdrawn') ok('MCP tools/call withdraw_human_request closes it');
+  const gone = await human.c.callTool({ name: 'withdraw_human_request', arguments: { id, reason: 'User answered in chat' } });
+  const closed = store.get(id);
+  if (!gone.isError && closed?.resolvedReason === 'withdrawn' && closed?.resolvedNote === 'User answered in chat') ok('MCP tools/call withdraw_human_request closes it, keeping the reason');
   else fail(`withdraw_human_request: ${JSON.stringify(gone).slice(0, 300)}`);
   await human.close();
 

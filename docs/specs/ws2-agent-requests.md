@@ -49,7 +49,8 @@ inputSchema: {
 
 Behaviour:
 0. **Who may ask** (contracts §8): call `canAsk(host, store, caller)` first. If it is not allowed,
-   return an error result. The refusal never creates an item.
+   return an error result. The refusal never creates an item, and it doesn't count towards the
+   rate limit.
    - With a spawner: *"You can't ask the human directly: this session was launched by another
      session. Send your question to it with send_message (to: "<spawnedBy>"), including the context
      and options it needs."*
@@ -64,6 +65,9 @@ Behaviour:
 3. **Limits:**
    - The store enforces `maxOpenPerSession`. Catch its error and return it with advice: withdraw an
      old request, or wait for answers.
+   - **Rate limit:** at most 3 **new** item ids per session per 10 minutes, tracked in memory in
+     the tool module. Dedupe updates and refusals don't count. On breach: *"Too many separate
+     requests — batch related questions into one request with options."*
 4. `taskId` comes from `host.sessions.get(caller)?.taskId ?? null`.
 5. Return `{ id, state: 'open', blocking }` plus, as the text result, an instruction:
    *"Request queued in the human's "Needs you" queue. If blocking, end your turn now; the answer
@@ -75,15 +79,17 @@ one bad example.
 
 ### `withdraw_human_request`
 
-`{ id: string }`. Only the caller's own open item, or an answered one whose delivery is not
-`delivered`. It resolves as
-`withdrawn` and returns `{ id, state }`. An unknown id or another session's item → error
-"not your request".
+`{ id: string, reason: string }`. Only the caller's own open item, or an answered one whose
+delivery is not `delivered`. It resolves as `withdrawn`, keeps `reason` (one short sentence,
+1..200 characters, such as "User answered in chat") as the item's `resolvedNote`, and returns
+`{ id, state, resolvedReason, resolvedNote }`. The view shows the note after "withdrawn by
+agent". An unknown id or another session's item → error "not your request". A missing or blank
+`reason` → error.
 
 ### `list_my_human_requests`
 
 No args. Returns the caller's open and answered items, plus items resolved in the last 24 h:
-`[{ id, kind, title, state, resolvedReason, answer: { optionId, text } | null }]`. This lets an agent
+`[{ id, kind, title, state, resolvedReason, resolvedNote, answer: { optionId, text } | null }]`. This lets an agent
 that missed the delivered text (compaction, restart) recover its answer.
 
 ## Answer handlers
@@ -133,8 +139,8 @@ decide/approve/act". The body:
 ## Acceptance criteria
 
 - [ ] Unit tests (fake host) cover: happy path, every validation failure, dedupe updates in place
-      (same id, `readAt` kept, same session only), per-session open cap (dedupe updates exempt), rapid creation under the cap,
-      slot reuse after answering or withdrawing, withdraw of a foreign item refused, list scoping, answer
+      (same id, `readAt` kept, same session only), per-session cap, rate limit (dedupe updates and
+      refusals exempt), withdraw of a foreign item refused, list scoping, answer
       with option / text / both / invalid, delivery success → `resolved:delivered`, delivery failure →
       `failed` with error and retry, retry cap.
 - [ ] The delivered text matches contracts §6 byte-for-byte for a fixture (snapshot test).

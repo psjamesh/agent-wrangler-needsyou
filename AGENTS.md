@@ -142,6 +142,18 @@ Nothing lands on `main` without passing the gate. It runs in two places:
 - **CI's `gate` job**, which runs the same hooks on every push and PR, so `--no-verify` or a
   clone without hooks can't bypass it.
 
+`main` is protected by the **Protect main** ruleset: changes land only through a PR whose
+`test (22)`, `test (24)`, `gate` and `boot-smoke` checks pass, with no force-push or deletion
+and no bypass. Renaming a CI job means updating the ruleset's required checks too.
+
+Every CI job starts with `safer-runner-action`, which limits egress to the hostnames listed in
+its `allowed-domains`. A new download in CI needs its host added there. Its `http-filter` makes every
+non-platform host read-only (`GET`/`HEAD`, plus git fetch's `POST` to `git-upload-pack`), so
+a step can't publish or push; add a new host there too, and keep it read-only. Comment a host above
+`allowed-domains: |`, never inside it: a `#` line in a block scalar is content, and the action
+reads each word as a domain. Actions and hook revs
+are pinned to commit SHAs (`pre-commit autoupdate --freeze` bumps the hooks).
+
 Set it up once per clone (each worktree shares the clone's hooks):
 
 ```sh
@@ -153,6 +165,7 @@ pre-commit install          # installs the pre-commit, pre-merge-commit and pre-
 | --- | --- | --- |
 | pre-commit-hooks | commit, merge, push | trailing whitespace, missing final newline, CRLF, merge markers, case clashes, bad YAML/JSON, files over 1 MB, shebang/mode mismatches, private keys |
 | gitleaks | commit, merge, push | secrets and tokens |
+| shellcheck | when shell scripts change | shell script bugs |
 | no-local-paths | commit, merge, push | absolute paths from one machine (macOS user or temp folders, Linux home folders) in any tracked file. Write a placeholder such as `<AW_DATA_DIR>` instead |
 | lockfile-in-sync | when `package*.json` change | a `package-lock.json` that doesn't match `package.json`. Agent Wrangler refuses such installs, and `npm ci --dry-run` doesn't catch it |
 | eslint | when JS changes | correctness errors such as unused or undefined names (`eslint.config.js`) |

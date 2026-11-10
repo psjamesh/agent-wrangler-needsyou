@@ -1,5 +1,5 @@
 import { writeJsonAtomic, readJsonOrQuarantine } from './atomic-json.js';
-import { newItemId, normaliseItem, validateAnswer, RESOLVED_REASONS, DELIVERIES, LIMITS } from './item.js';
+import { newItemId, normaliseItem, validateAnswer, RESOLVED_REASONS, DELIVERIES, LIMITS, singleLine } from './item.js';
 
 export const MAX_ITEMS = 500;
 export const DEFAULT_MAX_OPEN_PER_SESSION = 5;
@@ -113,6 +113,7 @@ export class InboxStore {
       dedupeKey: fields.dedupeKey ?? (fields.source === 'agent' && fields.sessionId ? `agent:${fields.sessionId}:${id}` : undefined),
       state: 'open',
       resolvedReason: null,
+      resolvedNote: null,
       createdAt: t,
       updatedAt: t,
       readAt: null,
@@ -203,17 +204,20 @@ export class InboxStore {
     return structuredClone(item);
   }
 
-  _close(item, reason, t) {
+  _close(item, reason, t, note = null) {
     item.state = 'resolved';
     item.resolvedReason = reason;
+    item.resolvedNote = note;
     item.updatedAt = t;
   }
 
-  resolve(id, reason) {
+  // `note` is a short why, in the closer's words (an agent's withdraw reason).
+  resolve(id, reason, { note } = {}) {
     if (!RESOLVED_REASONS.includes(reason)) throw new Error(`unknown resolve reason "${reason}"`);
     const item = this._find(id);
     if (item.state === 'resolved') return null;
-    this._close(item, reason, this.now());
+    const why = typeof note === 'string' ? singleLine(note) : '';
+    this._close(item, reason, this.now(), why ? why.slice(0, LIMITS.resolvedNote) : null);
     this._save();
     return structuredClone(item);
   }

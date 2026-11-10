@@ -10,7 +10,7 @@ export function makeListMyHumanRequestsTool({ now = Date.now } = {}) {
     name: 'list_my_human_requests',
     description:
       'List your own requests in the human\'s "Needs you" queue: the open and answered ones, plus '
-      + 'any closed in the last 24 hours, as {id, kind, title, state, resolvedReason, answer}. Call it '
+      + 'any closed in the last 24 hours, as {id, kind, title, state, resolvedReason, resolvedNote, answer}. Call it '
       + 'after a restart or a compaction to recover an answer you may have missed, or to find an id '
       + 'to withdraw. It reads only the session you are running in; there is no session parameter. '
       + 'Never for status updates, summaries, or "done" notices.',
@@ -26,6 +26,7 @@ export function makeListMyHumanRequestsTool({ now = Date.now } = {}) {
           title: i.title,
           state: i.state,
           resolvedReason: i.resolvedReason,
+          resolvedNote: i.resolvedNote,
           answer: i.answer ? { optionId: i.answer.optionId, text: i.answer.text } : null,
         }));
       return okResult({ requests });

@@ -80,6 +80,8 @@ interface Item {
   dedupeKey: string;        // agent: `agent:<sid>:<key or id>`; status: `status:<sid>:<episode>`
   state: State;
   resolvedReason: ResolvedReason | null;
+  resolvedNote: string | null;   // resolved only: why, in the closer's words (the agent's
+                                 // withdraw reason), 1..200 chars, single line
   createdAt: number; updatedAt: number;  // epoch ms
   readAt: number | null;
   expiresAt: number | null;
@@ -122,7 +124,7 @@ class InboxStore {
   markRead(ids: string[]): number
   answer(id, { optionId?, text? }): Item                 // open -> answered, delivery 'pending'
   setDelivery(id, { delivery, deliveryError? }): Item    // success -> resolved('delivered')
-  resolve(id, reason): Item | null                       // idempotent; null if already resolved
+  resolve(id, reason, { note }?): Item | null            // idempotent; null if already resolved; note → resolvedNote
   resolveWhere(pred, reason): Item[]
   remove(ids: string[]): number
   // who may ask the human (see §8)

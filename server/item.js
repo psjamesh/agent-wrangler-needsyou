@@ -26,6 +26,7 @@ export const LIMITS = Object.freeze({
   dedupeKey: 120,
   answerText: 4000,
   deliveryError: 500,
+  resolvedNote: 200,
   statusString: 500,
   expiresInMinutes: { min: 5, max: 10080 },
 });
@@ -210,6 +211,9 @@ export function normaliseItem(raw) {
     dedupeKey,
     state: raw.state,
     resolvedReason: resolved ? raw.resolvedReason : null,
+    // Why it closed, in the closer's words (an agent's withdraw reason).
+    resolvedNote: resolved && isStr(raw.resolvedNote) && singleLine(raw.resolvedNote)
+      ? clip(singleLine(raw.resolvedNote), LIMITS.resolvedNote) : null,
     createdAt,
     updatedAt: isTime(raw.updatedAt) ? raw.updatedAt : createdAt,
     readAt: isTime(raw.readAt) ? raw.readAt : null,

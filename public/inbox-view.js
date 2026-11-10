@@ -191,7 +191,9 @@ export function createInboxView(el, api, {
     setText(row.querySelector('.ibx-tag-urgent'), isUrgent(item) && !failed && !done ? 'Urgent' : '');
     setText(row.querySelector('.ibx-tag-failed'), failed ? 'Not delivered' : '');
     // "sending" is the age itself, so it is not said twice.
-    setText(row.querySelector('.ibx-closed-reason'), done && item.state === 'resolved' ? resolvedLabel(item) : '');
+    const reason = row.querySelector('.ibx-closed-reason');
+    setText(reason, done && item.state === 'resolved' ? resolvedLabel(item) : '');
+    setAttr(reason, 'title', done && item.resolvedNote ? item.resolvedNote : null);
     setText(row.querySelector('.ibx-row-age'), done ? closedLabel(item, now()) : waitingLabel(item, now()));
     setAttr(row.querySelector('.ibx-dot'), 'title', unread ? 'Unread' : null);
   }
@@ -507,6 +509,10 @@ export function createInboxView(el, api, {
     const closed = make('p', 'ibx-d-closed');
     const how = item.state === 'answered' ? 'Answer sending' : `Closed: ${resolvedLabel(item)}`;
     closed.appendChild(make('span', 'ibx-d-closed-reason', how));
+    if (item.state === 'resolved' && item.resolvedNote) {
+      closed.appendChild(doc.createTextNode(': '));
+      closed.appendChild(make('span', 'ibx-d-closed-note', item.resolvedNote));
+    }
     closed.appendChild(doc.createTextNode(' · '));
     const when = closedAt(item);
     const at = make('time', 'ibx-d-closed-at', new Date(when).toLocaleString());

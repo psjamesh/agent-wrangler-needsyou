@@ -235,12 +235,13 @@ if (expect(textId, 'a request with the false compatibility flag is recorded')) {
 // 7. The agent's own view and withdrawal.
 const mine = await callTool(HUMAN, 'list_my_human_requests', {});
 expect(mine.result?.structuredContent?.requests?.some((r) => r.id === agentId), 'list_my_human_requests lists the open request');
-const withdrawn = await callTool(HUMAN, 'withdraw_human_request', { id: agentId });
+const withdrawn = await callTool(HUMAN, 'withdraw_human_request', { id: agentId, reason: 'User answered in chat' });
 expect(!withdrawn.result?.isError, 'withdraw_human_request succeeds');
-const notMine = await callTool(WORKER, 'withdraw_human_request', { id: agentId });
+const notMine = await callTool(WORKER, 'withdraw_human_request', { id: agentId, reason: 'Not mine' });
 expect(notMine.result?.isError, "a session cannot withdraw another session's request");
 const inbox5 = await inboxWhere((ib) => itemIn(ib, agentId)?.state === 'resolved', 'the agent item withdrawn');
 expect(itemIn(inbox5, agentId).resolvedReason === 'withdrawn', 'withdrawn shows in graph.inbox');
+expect(itemIn(inbox5, agentId).resolvedNote === 'User answered in chat', 'the withdraw reason shows in graph.inbox');
 send({ type: 'inbox-dismiss', id: workerId });
 const inbox6 = await inboxWhere((ib) => ib.open === 0, 'nothing left open');
 console.log('final graph.inbox:', JSON.stringify({ unread: inbox6.unread, open: inbox6.open, items: inbox6.items.map((i) => `${i.source}:${i.state}:${i.resolvedReason}`) }));

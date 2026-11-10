@@ -747,6 +747,23 @@ test('a dismissed agent item shows how it closed and no answer', () => {
   assert.equal(v.q('.ibx-d-readonly button'), null);
 });
 
+test('a withdrawn item shows the agent\'s reason after how it closed', () => {
+  const v = mountView();
+  const w = item({ title: 'Which DB?', state: 'resolved', resolvedReason: 'withdrawn', resolvedNote: 'User answered in chat', updatedAt: 19 * MIN });
+  const bare = item({ title: 'Old', state: 'resolved', resolvedReason: 'withdrawn', updatedAt: 18 * MIN });
+  v.view.update(graphOf([w, bare]));
+  v.filter('closed').click();
+  const [row, bareRow] = v.rows();
+  assert.equal(text(row.querySelector('.ibx-closed-reason')), 'withdrawn by agent');
+  assert.equal(row.querySelector('.ibx-closed-reason').getAttribute('title'), 'User answered in chat');
+  assert.equal(bareRow.querySelector('.ibx-closed-reason').getAttribute('title'), null);
+  v.view.select(w.id);
+  assert.equal(text(v.q('.ibx-d-closed-reason')), 'Closed: withdrawn by agent');
+  assert.equal(text(v.q('.ibx-d-closed-note')), 'User answered in chat');
+  v.view.select(bare.id);
+  assert.equal(v.q('.ibx-d-closed-note'), null, 'an older withdrawn item has no note');
+});
+
 test('a cleared status item shows its terminal text, read-only, with no terminal toggle', () => {
   const v = mountView();
   const s = statusItem({ state: 'resolved', resolvedReason: 'status-cleared', updatedAt: 18 * MIN });
@@ -952,6 +969,26 @@ test('the session link of a blocked item and Show terminal here both ask for the
   v.window.localStorage.removeItem('cm-session-view');
   v.q('.ibx-d-session').click();
   assert.deepEqual(JSON.parse(v.window.localStorage.getItem('cm-session-view')), { [s.sessionId]: 'terminal' });
+});
+
+test('all agent kinds offer standalone text despite old false metadata', () => {
+  for (const kind of ['decision', 'approval', 'question', 'action']) {
+    const v = mountView();
+    const d = item({ kind, options: [{ id: 'a', label: 'A' }], allowFreeText: false });
+    v.view.update(graphOf([d]));
+    v.view.select(d.id);
+    const ta = v.q('.ibx-text');
+    for (const value of ['  ', 'x'.repeat(4001)]) {
+      ta.value = value;
+      ta.dispatchEvent(new v.window.Event('input', { bubbles: true }));
+      assert.equal(v.q('.ibx-send').disabled, true);
+    }
+    ta.value = 'x'.repeat(4000);
+    ta.dispatchEvent(new v.window.Event('input', { bubbles: true }));
+    assert.equal(v.q('.ibx-send').disabled, false);
+    v.q('.ibx-send').click();
+    assert.deepEqual(v.sent.at(-1), { type: 'inbox-answer', id: d.id, text: 'x'.repeat(4000) });
+  }
 });
 
 const liveGraph = (items, core = [...new Set(items.map((i) => i.sessionId))].map((sessionId) => ({ sessionId, managed: true }))) => graphOf(items, { core });
@@ -1401,26 +1438,6 @@ test('pagehide restores a temporary preference and pageshow can remount the expl
   v.window.dispatchEvent(new v.window.Event('pageshow'));
   assert.equal(v.mounts.length, 2);
   assert.equal(v.window.localStorage.getItem('cm-session-view'), raw);
-});
-
-test('all agent kinds offer standalone text despite old false metadata', () => {
-  for (const kind of ['decision', 'approval', 'question', 'action']) {
-    const v = mountView();
-    const d = item({ kind, options: [{ id: 'a', label: 'A' }], allowFreeText: false });
-    v.view.update(graphOf([d]));
-    v.view.select(d.id);
-    const ta = v.q('.ibx-text');
-    for (const value of ['  ', 'x'.repeat(4001)]) {
-      ta.value = value;
-      ta.dispatchEvent(new v.window.Event('input', { bubbles: true }));
-      assert.equal(v.q('.ibx-send').disabled, true);
-    }
-    ta.value = 'x'.repeat(4000);
-    ta.dispatchEvent(new v.window.Event('input', { bubbles: true }));
-    assert.equal(v.q('.ibx-send').disabled, false);
-    v.q('.ibx-send').click();
-    assert.deepEqual(v.sent.at(-1), { type: 'inbox-answer', id: d.id, text: 'x'.repeat(4000) });
-  }
 });
 
 function preference(v, name, value) {
