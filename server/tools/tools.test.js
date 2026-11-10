@@ -212,6 +212,52 @@ test('request_human_input: at most three new requests per session per ten minute
   assert.equal((await request.handler(as('s1'), ask())).isError, undefined, 'the window slides');
 });
 
+test('request_human_input: the configured rate can be lower or higher than three', async () => {
+  for (const limit of [1, 5]) {
+    const { request, as, now } = setup({ settings: { requestsPerTenMinutes: limit, maxOpenPerSession: 20 } });
+    for (let i = 0; i < limit; i++) assert.equal((await request.handler(as('s1'), ask())).isError, undefined);
+    assert.equal((await request.handler(as('s1'), ask())).isError, true);
+    now.tick(RATE_LIMIT.windowMs - 1);
+    assert.equal((await request.handler(as('s1'), ask())).isError, true);
+    now.tick(1);
+    assert.equal((await request.handler(as('s1'), ask())).isError, undefined);
+  }
+});
+
+test('request_human_input: zero disables the rate limit but keeps the open-request cap', async () => {
+  const { request, as, store } = setup({ settings: { requestsPerTenMinutes: 0 } });
+  for (let i = 0; i < 5; i++) assert.equal((await request.handler(as('s1'), ask())).isError, undefined);
+  const over = await request.handler(as('s1'), ask());
+  assert.equal(over.isError, true);
+  assert.match(over.content[0].text, /the limit is 5/);
+  assert.equal(store.openForSession('s1').length, 5);
+});
+
+test('request_human_input: rate changes apply immediately and retain recent creations', async () => {
+  const { request, as, settings, now, store } = setup({ settings: { requestsPerTenMinutes: 0, maxOpenPerSession: 20 } });
+  for (let i = 0; i < 4; i++) assert.equal((await request.handler(as('s1'), ask())).isError, undefined);
+  settings.requestsPerTenMinutes = 3;
+  assert.equal((await request.handler(as('s1'), ask())).isError, true);
+  settings.requestsPerTenMinutes = 5;
+  assert.equal((await request.handler(as('s1'), ask())).isError, undefined);
+  assert.equal((await request.handler(as('s1'), ask())).isError, true);
+  settings.requestsPerTenMinutes = 0;
+  assert.equal((await request.handler(as('s1'), ask())).isError, undefined);
+  delete settings.requestsPerTenMinutes;
+  assert.equal((await request.handler(as('s1'), ask())).isError, true);
+  now.tick(RATE_LIMIT.windowMs);
+  assert.equal((await request.handler(as('s1'), ask())).isError, undefined);
+  assert.equal(store.openForSession('s1').length, 7);
+});
+
+test('request_human_input: invalid rate settings preserve the default', async () => {
+  for (const value of [-1, 1.5, 101, '0', null, NaN, Infinity, false]) {
+    const { request, as } = setup({ settings: { requestsPerTenMinutes: value } });
+    for (let i = 0; i < 3; i++) assert.equal((await request.handler(as('s1'), ask())).isError, undefined);
+    assert.equal((await request.handler(as('s1'), ask())).isError, true, String(value));
+  }
+});
+
 test('request_human_input: dedupe updates and refusals do not count towards the rate limit', async () => {
   const f = setup();
   const { request, as, store } = f;

@@ -21,6 +21,7 @@ export const SETTINGS = [
   { key: 'maxOpenPerSession', type: 'number', label: 'Open requests per session', help: 'How many unanswered requests one session may have at once (1–20, default 5).', min: 1, max: 20, step: 1 },
   { key: 'retentionDays', type: 'number', label: 'Keep resolved items (days)', help: 'Resolved items are removed after this many days (1–90, default 7).', min: 1, max: 90, step: 1 },
   { key: 'toastNotifications', type: 'toggle', label: 'Toast notifications', help: 'Show a toast for each new Needs you item, with a shortcut to view the request. Off unless turned on.' },
+  { key: 'requestsPerTenMinutes', type: 'number', label: 'New requests per ten minutes', help: 'New requests one session may create in ten minutes (0–100, default 3). Set 0 to turn off the rate limit. The open-request cap still applies.', min: 0, max: 100, step: 1 },
 ];
 
 export const REQUIRES = ['sessions:read', 'tasks:read', 'deliver', 'board:rebuild'];

@@ -96,7 +96,7 @@ const same = (a, b) => JSON.stringify([...a].sort()) === JSON.stringify([...b].s
 const want = {
   tools: ['request_human_input', 'withdraw_human_request', 'list_my_human_requests'],
   handlers: ['inbox-mark-read', 'inbox-dismiss', 'inbox-answer', 'inbox-retry', 'inbox-set-can-ask', 'inbox-observe'],
-  settings: ['includeTransientApiErrors', 'maxOpenPerSession', 'retentionDays', 'toastNotifications'],
+  settings: ['includeTransientApiErrors', 'maxOpenPerSession', 'retentionDays', 'toastNotifications', 'requestsPerTenMinutes'],
   sweeps: ['retention', 'expiry', 'retention-boot'],
 };
 const got = {

@@ -42,7 +42,7 @@ The **Needs you** button (a person silhouette) shows on the left rail. It has
 a badge that counts the items that need you. A session card with items shows
 a small chip with the same silhouette and the number of items. Select the chip
 to open the first one. **Needs you** also shows in **Settings → Extensions**,
-with four settings.
+with five settings.
 
 The extension asks for these capabilities:
 
@@ -172,6 +172,14 @@ Your answer arrives in the agent's prompt as a message that starts with
 | Open requests per session | 5 | The number of unanswered requests one session can have at the same time (1 to 20) |
 | Keep resolved items (days) | 7 | The number of days to keep closed items (1 to 90) |
 | Toast notifications | Off | Shows a toast for each new Needs you item, with a **View request** shortcut |
+| New requests per ten minutes | 3 | New requests each session may create in a sliding ten-minute window (0 to 100); 0 turns off the rate limit |
+
+The request rate limit counts only newly created agent requests. Updating an open
+request with the same dedupe key and refused calls do not count. Set **New requests
+per ten minutes** to **0** to disable it; **Open requests per session** still limits
+unanswered requests. Changes apply to the next call without restarting. Requests
+created while the limit is off still count if you turn it back on within ten minutes.
+The rate history is held in memory and resets when the extension restarts.
 
 Toast notifications use the same stack as scheduled-session notifications.
 They show the request title and session context. **View request** opens the

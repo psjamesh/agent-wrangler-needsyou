@@ -102,7 +102,10 @@ export function makeRequestHumanInputTool({ now = Date.now } = {}) {
         return okResult({ id: item.id, state: item.state, blocking: item.blocking, updated: true }, nextStep(item.blocking));
       }
 
-      if (inWindow(caller).length >= RATE_LIMIT.max) {
+      const configuredRate = host.settings?.get('requestsPerTenMinutes');
+      const max = Number.isInteger(configuredRate) && configuredRate >= 0 && configuredRate <= 100
+        ? configuredRate : RATE_LIMIT.max;
+      if (max > 0 && inWindow(caller).length >= max) {
         return errorResult('Too many separate requests — batch related questions into one request with options.');
       }
 
