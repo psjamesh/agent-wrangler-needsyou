@@ -1,6 +1,6 @@
 {
   "name": "agent-wrangler-needsyou",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "private": true,
   "type": "module",
   "description": "A triage queue of the decisions and actions your sessions need from you. An Agent Wrangler extension.",

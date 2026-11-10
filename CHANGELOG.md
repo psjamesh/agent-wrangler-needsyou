@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.17
+
+### Changed
+
+- Limit agent requests by the configured open-request cap only. Answering or
+  withdrawing a request immediately frees a slot for another request.
+
 ## 0.1.16
 
 ### Added
