@@ -4,11 +4,14 @@
 
 ### Added
 
+- **New requests per ten minutes** setting: defaults to 3 new requests per
+  session, 0 turns the rate limit off, and 1–100 adjusts it. The open-request
+  cap still applies.
+
 - **Why a request was withdrawn.** `withdraw_human_request` now needs a
   `reason`: one short sentence, such as "User answered in chat". The closed
   request shows it after "withdrawn by agent", and `list_my_human_requests`
   returns it as `resolvedNote`.
-
 
 ## 0.1.17
 

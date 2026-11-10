@@ -65,7 +65,8 @@ Behaviour:
 3. **Limits:**
    - The store enforces `maxOpenPerSession`. Catch its error and return it with advice: withdraw an
      old request, or wait for answers.
-   - **Rate limit:** at most 3 **new** item ids per session per 10 minutes, tracked in memory in
+   - **Rate limit:** `requestsPerTenMinutes` **new** item ids per session per 10 minutes
+     (default 3, integer 0–100; 0 disables), tracked in memory in
      the tool module. Dedupe updates and refusals don't count. On breach: *"Too many separate
      requests — batch related questions into one request with options."*
 4. `taskId` comes from `host.sessions.get(caller)?.taskId ?? null`.

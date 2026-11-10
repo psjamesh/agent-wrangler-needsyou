@@ -7,9 +7,11 @@ The non-obvious decisions behind `server/tools/`, `server/answer.js`,
 
 - **The order of checks:** identity → canAsk → validate → dedupe update → rate
   limit → create. A refusal, a validation failure, a dedupe update or a cap
-  refusal doesn't count towards the rate limit (3 new items per session per 10
-  minutes), so an agent that restates or fixes a request is never throttled
-  for it.
+  refusal doesn't count towards the rate limit, so an agent that restates or
+  fixes a request is never throttled for it. `requestsPerTenMinutes` sets the
+  number of new items per session per ten minutes (default 3, integer 0–100;
+  0 disables). Invalid values fall back to 3. Changes apply to the next call;
+  creations while disabled still count if the limit is re-enabled within the window.
 - **A dedupe update replaces the request wholesale**: title, body, options and
   the rest, except `kind`, which can't change. It keeps the item's id and read
   state, so the human isn't notified again.

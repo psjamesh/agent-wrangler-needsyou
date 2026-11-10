@@ -200,7 +200,7 @@ pre-commit install          # installs the pre-commit, pre-merge-commit and pre-
   `<AW_DATA_DIR>/extensions/needsyou` of a dev wrangler (`AW_DEV=1`) and restart it. **Never
   symlink:** discovery keeps only real directories, so a symlink is silently never loaded. A
   hand-placed copy loads with no provenance record and no consent prompt. Check Settings →
-  Extensions for "Needs you" (enabled, four settings), and check that `graph.inbox` is present.
+  Extensions for "Needs you" (enabled, five settings), and check that `graph.inbox` is present.
 
 ## Design notes
 
