@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.18
 
 ### Added
 
@@ -12,6 +12,16 @@
   `reason`: one short sentence, such as "User answered in chat". The closed
   request shows it after "withdrawn by agent", and `list_my_human_requests`
   returns it as `resolvedNote`.
+
+### Changed
+
+- Maintain Needs You at `psjamesh/agent-wrangler-needsyou`, with the original
+  MIT licence and attribution preserved.
+- Remove the request creation rate limit. The per-session open-request cap
+  remains; answering or withdrawing a request immediately frees its slot.
+- Require Agent Wrangler host API `^2.1.0` and the additional `schema:zod`
+  capability to build tool schemas with the host’s Zod. The extension has no
+  runtime dependencies. Older hosts refuse this version at install or update.
 
 ## 0.1.11
 

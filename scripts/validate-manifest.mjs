@@ -5,13 +5,13 @@
 // (capability names + engines.wranglerApi against the served version), the
 // store factory with the bag the wrangler hands it, the graph keys, and the
 // extension's MCP tools served through the wrangler's REAL MCP server
-// (buildMcpServer + the SDK's in-memory client). That last step is where this
-// repo's zod 4 schemas meet the wrangler's MCP SDK, which sits beside zod 3.
+// (buildMcpServer + the SDK's in-memory client).
 //
 //   AW_REPO=<agent-wrangler checkout> node scripts/validate-manifest.mjs
 //
 // AW_REPO must have its node_modules (npm ci --ignore-scripts there).
 // Exits 1 on any refusal, 2 if AW_REPO is not a loader checkout.
+import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -140,6 +140,33 @@ try {
     rebuild: () => {}, broadcast: () => {}, deliver: async () => ({ mode: 'live' }), archiveSession: () => {},
     stores: { inbox: store }, settingDefs: manifest.settings, readSettings: () => ({}), log: () => {},
   });
+  const z = host.schema.z;
+  const schemas = manifest.tools.map((tool) => tool.inputSchema({ host }));
+  for (const [i, shape] of schemas.entries()) {
+    for (const key of Object.keys(shape)) {
+      assert.doesNotMatch(key, /^(session|session_?id|card|card_?id|caller)$/i, manifest.tools[i].name);
+    }
+  }
+
+  const ask = (extra = {}) => ({ kind: 'decision', title: 'Pick one', ...extra });
+  const schema = z.object(schemas[0]);
+  assert.equal(schema.safeParse(ask({ options: [{ label: 'A' }, { id: 'b', label: 'B', description: 'why' }] })).success, true);
+  for (const bad of [
+    ask({ kind: 'blocked' }),
+    ask({ title: '' }),
+    ask({ title: 'x'.repeat(121) }),
+    ask({ options: Array(7).fill({ label: 'A' }) }),
+    ask({ expires_in_minutes: 4 }),
+    ask({ expires_in_minutes: 10081 }),
+    ask({ urgency: 'low' }),
+  ]) assert.equal(schema.safeParse(bad).success, false, JSON.stringify(bad).slice(0, 80));
+  const withdrawSchema = z.object(schemas[1]);
+  assert.equal(withdrawSchema.safeParse({ id: 'ibx_1', reason: 'User answered in chat' }).success, true);
+  for (const bad of [{ id: 'ibx_1' }, { id: 'ibx_1', reason: '' }, { id: 'ibx_1', reason: 'x'.repeat(201) }]) {
+    assert.equal(withdrawSchema.safeParse(bad).success, false, JSON.stringify(bad).slice(0, 80));
+  }
+  ok('host Zod shapes preserve validation limits and have no session parameter');
+
   const deps = { hostApiFor: (extId) => (extId === manifest.id ? host : undefined) };
   const connect = async (caller) => {
     const server = buildMcpServer(deps, caller, { tools: loaded.tools });
@@ -155,6 +182,14 @@ try {
   const props = Object.fromEntries(listed.map((t) => [t.name, Object.keys(t.inputSchema?.properties ?? {})]));
   if (listed.length === 3) ok(`MCP tools/list: ${listed.map((t) => `${t.name}(${props[t.name].join(', ')})`).join('; ')}`);
   else fail(`MCP tools/list shows ${listed.length} of the 3 tools`);
+  const expectedSchemas = JSON.parse(fs.readFileSync(path.join(root, 'server/tools/fixtures/input-schemas.json'), 'utf8'));
+  for (const tool of listed) {
+    const expected = { ...expectedSchemas[tool.name] };
+    const actual = { ...tool.inputSchema };
+    delete actual.$schema;
+    assert.deepEqual(actual, expected, `${tool.name} JSON Schema changed`);
+  }
+  ok('all three listed JSON Schemas match the pre-migration schemas');
   const rhi = listed.find((t) => t.name === 'request_human_input');
   if (!rhi || !same(rhi.inputSchema?.required ?? [], ['kind', 'title']) || rhi.inputSchema?.properties?.kind?.enum?.length !== 4) {
     fail(`request_human_input's listed schema lost its shape: ${JSON.stringify(rhi?.inputSchema)?.slice(0, 300)}`);
@@ -165,7 +200,7 @@ try {
   if (!good.isError && /^ibx_/.test(id ?? '') && store.get(id)?.state === 'open') ok(`MCP tools/call request_human_input (valid) → ${JSON.stringify(good.structuredContent)}`);
   else fail(`a valid request_human_input failed: ${JSON.stringify(good).slice(0, 300)}`);
 
-  // Refused by the SDK's schema check (zod 3 parsing a zod 4 shape) or by the
+  // Refused by the SDK's schema check or by the
   // tool's own validation; either way an error result and no new item.
   const before = store.snapshot().length;
   let bad;

@@ -14,7 +14,7 @@ export function makeListMyHumanRequestsTool({ now = Date.now } = {}) {
       + 'after a restart or a compaction to recover an answer you may have missed, or to find an id '
       + 'to withdraw. It reads only the session you are running in; there is no session parameter. '
       + 'Never for status updates, summaries, or "done" notices.',
-    inputSchema: {},
+    inputSchema: () => ({}),
     async handler({ host, caller }) {
       if (caller == null) return errorResult(NO_IDENTITY);
       const since = now() - RECENT_MS;

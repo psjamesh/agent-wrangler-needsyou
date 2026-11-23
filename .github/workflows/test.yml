@@ -204,7 +204,7 @@ jobs:
             needsyou/package-lock.json
             agent-wrangler/package-lock.json
 
-      # The copy boot-smoke installs needs this checkout's node_modules (zod).
+      # Verify the extension installs without development dependencies.
       - run: npm ci --omit=dev --ignore-scripts
 
       # No install scripts: the smoke boot opens no terminal, and node-pty

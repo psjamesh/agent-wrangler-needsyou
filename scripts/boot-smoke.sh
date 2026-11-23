@@ -2,7 +2,6 @@
 # Boot agent-wrangler with this extension installed and run dev-smoke.mjs
 # against it (CI's smoke step; runs the same way locally):
 #   AW_REPO=<wrangler checkout, npm ci'd> scripts/boot-smoke.sh [extension dir]
-# The extension dir must have its node_modules (npm ci here first).
 #
 # Everything is throwaway: a fresh data dir, a free port, AW_DEV=1, and HOME
 # pointed inside the data dir, so the boot cannot read or write the real
@@ -23,18 +22,36 @@ if [ ! -d "$repo/node_modules/ws" ]; then
   echo "boot-smoke: run 'npm ci --ignore-scripts' in $repo first" >&2
   exit 2
 fi
-if [ ! -f "$src/node_modules/zod/package.json" ]; then
-  echo "boot-smoke: run 'npm ci' in $src first (the copy needs node_modules)" >&2
-  exit 2
-fi
 
 data="$(mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/needsyou-smoke-XXXXX")"
 mkdir -p "$data/extensions/needsyou" "$data/home"
 # Three cards with no process behind them: one the human launched, one it
 # spawned (so it may not ask the human), and one archived (so a delivery to it
 # is refused, never woken).
-node - "$data" <<'JS'
-const fs = require('node:fs'), path = require('node:path');
+node --input-type=module - "$data" "$repo" "$src" <<'JS'
+import fs from 'node:fs';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+const { createTokenStore } = await import(pathToFileURL(path.join(process.argv[3], 'server/session-api/tokens.js')).href);
+const tokenStore = createTokenStore({ file: path.join(process.argv[2], 'session-tokens.json') });
+const tokens = Object.fromEntries(['smoke-human', 'smoke-worker', 'smoke-archived'].map((id) => [id, tokenStore.issue(id)]));
+fs.writeFileSync(path.join(process.argv[2], 'smoke-tokens.json'), JSON.stringify(tokens), { mode: 0o600 });
+const { InboxStore } = await import(pathToFileURL(path.join(process.argv[4], 'server/store.js')).href);
+const { makeRequestHumanInputTool } = await import(pathToFileURL(path.join(process.argv[4], 'server/tools/request-human-input.js')).href);
+const store = new InboxStore({ file: path.join(process.argv[2], 'inbox.json') });
+const host = { stores: { inbox: store }, sessions: { get: () => ({}) }, rebuild: async () => {} };
+const request = makeRequestHumanInputTool();
+const asks = [
+  { kind: 'approval', title: 'Smoke: approve?', options: [{ id: 'yes', label: 'Yes' }, { id: 'no', label: 'No' }] },
+  { kind: 'decision', title: 'Smoke: another approach?', options: [{ id: 'a', label: 'A' }], allow_free_text: false },
+];
+const seeded = [];
+for (const args of asks) {
+  const result = await request.handler({ host, caller: 'smoke-archived' }, args);
+  if (result.isError) throw new Error(JSON.stringify(result));
+  seeded.push(result.structuredContent.id);
+}
+fs.writeFileSync(path.join(process.argv[2], 'smoke-requests.json'), JSON.stringify(seeded));
 const now = Date.now();
 const card = (intent, extra = {}) => ({ short: 'smoke', tmux: null, cwd: null, agent: 'claude', intent, createdAt: now, archived: false, ...extra });
 fs.writeFileSync(path.join(process.argv[2], 'mappings.json'), JSON.stringify({

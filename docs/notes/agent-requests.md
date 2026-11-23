@@ -5,11 +5,9 @@ The non-obvious decisions behind `server/tools/`, `server/answer.js`,
 
 ## `request_human_input`
 
-- **The order of checks:** identity → canAsk → validate → dedupe update → rate
-  limit → create. A refusal, a validation failure, a dedupe update or a cap
-  refusal doesn't count towards the rate limit (3 new items per session per 10
-  minutes), so an agent that restates or fixes a request is never throttled
-  for it.
+- **The order of checks:** identity → canAsk → validate → dedupe update → create.
+  The store's `maxOpenPerSession` setting is the only per-session limit. Dedupe
+  updates work at the cap; answering or withdrawing a request frees its slot.
 - **A dedupe update replaces the request wholesale**: title, body, options and
   the rest, except `kind`, which can't change. It keeps the item's id and read
   state, so the human isn't notified again.
@@ -28,11 +26,13 @@ The non-obvious decisions behind `server/tools/`, `server/answer.js`,
   measured a tool description alone at 0/6. The `needs-you` skill and its
   WRANGLER.md nudge are what make agents call it. The description says plainly
   what the tool is *not* for.
-- **zod 4 against the wrangler's zod 3.** This repo's schemas are zod 4 and pass
-  straight to the wrangler's MCP SDK, which sits beside zod 3.
+- **Host-provided Zod 4.** Tool schema factories use `host.schema.z` through
+  `schema:zod` on host API `^2.1.0`; the extension has no runtime dependencies.
   `scripts/validate-manifest.mjs` serves them through the wrangler's real
   `buildMcpServer` on every run, and `scripts/dev-smoke.mjs` does it over the
-  real `/mcp`. Both check that `tools/list` keeps the schemas, that a valid call
+  real `/mcp`. The manifest harness also checks validation limits and compares
+  every listed schema with `server/tools/fixtures/input-schemas.json`, the
+  pre-migration JSON Schemas including descriptions and nested constraints. Both check that `tools/list` keeps the schemas, that a valid call
   succeeds and that an invalid one is refused.
 
 ## Answers

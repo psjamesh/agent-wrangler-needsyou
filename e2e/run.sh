@@ -25,7 +25,7 @@ if [ ! -d "$repo/node_modules/ws" ]; then
   echo "e2e: run 'npm ci --ignore-scripts' in $repo first" >&2
   exit 2
 fi
-if [ ! -f "$root/node_modules/zod/package.json" ] || [ ! -d "$here/node_modules/playwright-core" ]; then
+if [ ! -f "$root/node_modules/happy-dom/package.json" ] || [ ! -d "$here/node_modules/playwright-core" ]; then
   echo "e2e: run 'npm ci --ignore-scripts' in $root and in $here first" >&2
   exit 2
 fi

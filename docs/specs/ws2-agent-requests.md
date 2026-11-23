@@ -34,23 +34,25 @@ and errors return `isError: true`. Call `await host.rebuild()` after every mutat
 ### `request_human_input`
 
 ```js
-inputSchema: {
-  kind: z.enum(['decision','approval','question','action']).describe(...),
-  title: z.string().min(1).max(120),
-  body: z.string().max(8000).optional(),          // markdown: context, trade-offs, what you recommend
-  options: z.array(z.object({ id, label: z.string().min(1).max(80), description: z.string().max(300).optional() })).max(6).optional(),
-  allow_free_text: z.boolean().optional(),
-  blocking: z.boolean().optional(),               // default true
-  urgency: z.enum(['normal','high']).optional(),
-  dedupe_key: z.string().max(120).optional(),
-  expires_in_minutes: z.number().int().min(5).max(10080).optional(),
+inputSchema: ({ host }) => {
+  const z = host.schema.z;
+  return {
+    kind: z.enum(['decision','approval','question','action']).describe(...),
+    title: z.string().min(1).max(120),
+    body: z.string().max(8000).optional(),          // markdown: context, trade-offs, what you recommend
+    options: z.array(z.object({ id, label: z.string().min(1).max(80), description: z.string().max(300).optional() })).max(6).optional(),
+    allow_free_text: z.boolean().optional(),
+    blocking: z.boolean().optional(),               // default true
+    urgency: z.enum(['normal','high']).optional(),
+    dedupe_key: z.string().max(120).optional(),
+    expires_in_minutes: z.number().int().min(5).max(10080).optional(),
+  };
 }
 ```
 
 Behaviour:
 0. **Who may ask** (contracts §8): call `canAsk(host, store, caller)` first. If it is not allowed,
-   return an error result. The refusal never creates an item, and it doesn't count towards the
-   rate limit.
+   return an error result. The refusal never creates an item.
    - With a spawner: *"You can't ask the human directly: this session was launched by another
      session. Send your question to it with send_message (to: "<spawnedBy>"), including the context
      and options it needs."*
@@ -65,9 +67,6 @@ Behaviour:
 3. **Limits:**
    - The store enforces `maxOpenPerSession`. Catch its error and return it with advice: withdraw an
      old request, or wait for answers.
-   - **Rate limit:** at most 3 **new** item ids per session per 10 minutes, tracked in memory in
-     the tool module. Dedupe updates and refusals don't count. On breach: *"Too many separate
-     requests — batch related questions into one request with options."*
 4. `taskId` comes from `host.sessions.get(caller)?.taskId ?? null`.
 5. Return `{ id, state: 'open', blocking }` plus, as the text result, an instruction:
    *"Request queued in the human's "Needs you" queue. If blocking, end your turn now; the answer
@@ -139,8 +138,8 @@ decide/approve/act". The body:
 ## Acceptance criteria
 
 - [ ] Unit tests (fake host) cover: happy path, every validation failure, dedupe updates in place
-      (same id, `readAt` kept, same session only), per-session cap, rate limit (dedupe updates and
-      refusals exempt), withdraw of a foreign item refused, list scoping, answer
+      (same id, `readAt` kept, same session only), per-session open cap (dedupe updates exempt), rapid creation under the cap,
+      slot reuse after answering or withdrawing, withdraw of a foreign item refused, list scoping, answer
       with option / text / both / invalid, delivery success → `resolved:delivered`, delivery failure →
       `failed` with error and retry, retry cap.
 - [ ] The delivered text matches contracts §6 byte-for-byte for a fixture (snapshot test).

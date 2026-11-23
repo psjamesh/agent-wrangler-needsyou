@@ -12,8 +12,8 @@ test('package.json wranglerExtension and the manifest agree on id, requires and 
   assert.equal(declared.id, manifest.id);
   assert.deepEqual(declared.requires, manifest.requires);
   assert.deepEqual(declared.engines, manifest.engines);
-  assert.deepEqual(manifest.requires, ['sessions:read', 'tasks:read', 'deliver', 'board:rebuild']);
-  assert.equal(manifest.engines.wranglerApi, '^1.57.0');
+  assert.deepEqual(manifest.requires, ['sessions:read', 'tasks:read', 'deliver', 'board:rebuild', 'schema:zod']);
+  assert.equal(manifest.engines.wranglerApi, '^2.1.0');
   assert.equal(declared.label, manifest.label);
   assert.equal(declared.description, manifest.description);
 });
@@ -30,12 +30,12 @@ test('the manifest declares the four settings and no defaults', () => {
   assert.deepEqual([SETTINGS[2].min, SETTINGS[2].max], [1, 90]);
 });
 
-test('every declared asset and skill exists, and runtime deps are zod only', () => {
+test('every declared asset and skill exists, and there are no runtime dependencies', () => {
   for (const rel of [manifest.client, manifest.styles, ...manifest.skills.map((s) => `skills/${s}/SKILL.md`)]) {
     assert.ok(fs.existsSync(path.join(dir, rel)), rel);
   }
   assert.match(fs.readFileSync(path.join(dir, 'skills/needs-you/SKILL.md'), 'utf8'), /^---\nname: needs-you\n/);
-  assert.deepEqual(Object.keys(pkg.dependencies), ['zod']);
+  assert.deepEqual(Object.keys(pkg.dependencies ?? {}), []);
   assert.ok(fs.existsSync(path.join(dir, 'package-lock.json')));
 });
 

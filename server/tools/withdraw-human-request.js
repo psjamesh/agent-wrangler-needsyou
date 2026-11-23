@@ -1,4 +1,3 @@
-import { z } from 'zod';
 import { LIMITS } from '../item.js';
 import { okResult, errorResult, NO_IDENTITY } from './result.js';
 
@@ -15,13 +14,13 @@ export const withdrawHumanRequestTool = {
     + 'away. It acts only on requests made by the session you are running in; there is no session '
     + 'parameter. Never for status updates, summaries, or "done" notices. Those do not belong in the '
     + 'queue at all.',
-  inputSchema: {
-    id: z.string().min(1).max(64).describe('The request id, as returned by request_human_input or list_my_human_requests.'),
-    reason: z.string().min(1).max(LIMITS.resolvedNote).describe(
+  inputSchema: ({ host }) => ({
+    id: host.schema.z.string().min(1).max(64).describe('The request id, as returned by request_human_input or list_my_human_requests.'),
+    reason: host.schema.z.string().min(1).max(LIMITS.resolvedNote).describe(
       'One short sentence on why it no longer needs the human, for example "User answered in chat", '
       + '"Found the answer in the docs" or "No longer needed: the task was cancelled".',
     ),
-  },
+  }),
   async handler({ host, caller }, args = {}) {
     if (caller == null) return errorResult(NO_IDENTITY);
     const store = host.stores.inbox;

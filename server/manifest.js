@@ -23,7 +23,7 @@ export const SETTINGS = [
   { key: 'toastNotifications', type: 'toggle', label: 'Toast notifications', help: 'Show a toast for each new Needs you item, with a shortcut to view the request. Off unless turned on.' },
 ];
 
-export const REQUIRES = ['sessions:read', 'tasks:read', 'deliver', 'board:rebuild'];
+export const REQUIRES = ['sessions:read', 'tasks:read', 'deliver', 'board:rebuild', 'schema:zod'];
 
 export default {
   id: 'needsyou',
@@ -31,9 +31,9 @@ export default {
   description: 'A triage queue of the decisions and actions your sessions need from you.',
   help: 'Adds the Needs you view: one item for each session blocked on you (a permission prompt, a sign-in, a trust dialog) and for each decision an agent raises with the request_human_input tool. Answers go straight back to the session. Items close themselves once the need goes away. Status items appear only while a board tab is open.',
   author: 'PortSwigger',
-  homepage: 'https://github.com/portswigger-tim/agent-wrangler-needsyou',
+  homepage: 'https://github.com/psjamesh/agent-wrangler-needsyou',
   defaultEnabled: true,
-  engines: { wranglerApi: '^1.57.0' },
+  engines: { wranglerApi: '^2.1.0' },
   dir,
   requires: REQUIRES,
   // The bag's `settings` is a read-through { get, all } view (host API 1.3.0),

@@ -15,7 +15,7 @@ ticket keys, chat channels, colleague names, credentials. Keep examples generic
 ## What this is
 
 - An **external extension** for agent-wrangler's extensions API, written against host API
-  `^1.57.0`. The wrangler copies it into `<DATA_DIR>/extensions/needsyou/`, runs
+  `^2.1.0`. The wrangler copies it into `<DATA_DIR>/extensions/needsyou/`, runs
   `npm ci --ignore-scripts` and imports `index.js`. **The manifest `id` (`needsyou`) must equal
   that directory name.**
 - Only the id (and what must equal it: the directory, `/ext/needsyou/` assets,
@@ -27,13 +27,13 @@ ticket keys, chat channels, colleague names, credentials. Keep examples generic
   so it duplicates `server/manifest.js` by design. `id`, `requires` and `engines` must agree
   exactly (`server/manifest.test.js` and `scripts/validate-manifest.mjs` both check).
 - **`package-lock.json` is mandatory**: the wrangler refuses to install without one. Regenerate
-  it after any dependency change. Runtime dependency: `zod` only.
+  it after any dependency change. There are no runtime dependencies; tools build schemas with `host.schema.z`.
 
 ## Invariants & footguns
 
 - **Nothing here may import agent-wrangler.** The extension reaches the wrangler only through the
   `host` façade it is handed. Its keys are exactly what `requires` grants (`sessions:read`,
-  `tasks:read`, `deliver`, `board:rebuild`) plus the always-present `id`, `version`, `stores`,
+  `tasks:read`, `deliver`, `board:rebuild`, `schema:zod`) plus the always-present `id`, `version`, `stores`,
   `settings`, `log`. There is no `host.broadcast`: the client reads the graph.
 - **No own file may have a static `import` line matching `from '../../index.js'` (two or more
   `../` levels; a single `../index.js` is not matched), or a path ending `/session-manager.js`,
@@ -221,6 +221,6 @@ The non-obvious decisions from each workstream, and the test procedures, are in
 
 `scripts/boot-smoke.sh` boots a throwaway wrangler (temp data dir, temp `HOME`,
 free port, `AW_DEV=1`) with this checkout copied in, and `scripts/dev-smoke.mjs`
-drives it. It needs `npm ci` here first (the copy needs `node_modules`). Its
-fixture cards have no process, and it delivers only to an archived card,
+drives it. Its fixture cards have no process, and it delivers only to an archived card
+with requests seeded before boot,
 because `host.deliver` to a dormant card wakes it and launches a billed agent.

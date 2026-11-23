@@ -25,9 +25,9 @@ README.md CHANGELOG.md docs/notes/*.md
    asset and the sweeps are registered. Also run the tools through agent-wrangler's **real MCP
    server** (`server/mcp/server.js` `buildMcpServer`, or its `McpServer` from the SDK) with an
    in-memory client: `tools/list` shows the 3 tools with their schemas, one valid `tools/call`
-   succeeds and one invalid one is rejected. The extension uses zod 4 while agent-wrangler's SDK
-   sits beside zod 3. The orchestrator proved this works with the SDK directly on 2026-11-03;
-   this keeps it proven.
+   succeeds and one invalid one is rejected. The extension builds schemas with `host.schema.z`
+   (Zod 4) through `schema:zod` on host API `^2.1.0`. Compare the listed schemas with
+   the baseline fixture and check validation limits using the host's Zod.
 2. **boot-smoke** boots a wrangler on a temp `AW_DATA_DIR` and a free port, with this repo copied
    to `extensions/needsyou`. `dev-smoke.mjs` then:
    - connects to the control socket and waits for a graph with `inbox`

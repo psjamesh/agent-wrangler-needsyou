@@ -1259,7 +1259,7 @@ test('real host embed lends and releases its singleton without hidden-view takeo
   v.document.body.append(home);
   const shows = [];
   const releases = [];
-  embed = createSessionEmbed({ document: v.document, parts: () => ({ sidebar }),
+  embed = createSessionEmbed({ document: v.document, parts: () => ({ sidebar }), cardOf: (sid) => sid,
     show(sid) { shows.push(sid); input.focus(); }, release(o) { releases.push(o.sessionId); } });
   const outside = v.document.createElement('input');
   v.document.body.append(outside);
@@ -1375,9 +1375,11 @@ test('host selection stack acknowledges and unsnoozes only deliberately opened a
   const views = [];
   const noop = () => {};
   const host = createContext({ document: v.document, localStorage: v.window.localStorage, latestSessions: sessions,
-    selectedSessionId: null, currentView: 'needsyou', acknowledgedAt: new Map(), justFinished: new Set(),
+    selectedSessionId: null, selectedCard: null, selectedNewSlot: null, actingCard: null, selectionBeforeView: null, currentView: 'needsyou', acknowledgedAt: new Map(), justFinished: new Set(),
     ACK_KEY: 'wrangler.acknowledged', CHAT_VIEW_KEY: 'cm-session-view', chatViewDefault: true, resolveSessionView,
     persistJustFinished: noop, isDiffPanelOpen: () => false, disarmChatHandoff: noop,
+    sessionByCard: (card) => sessions.find((s) => s.sessionId === card), sessionIdOf: (card) => card,
+    cardUnreachable: () => false, getSetting: () => true,
     setUnread: noop, renderPanel: noop, syncShellTerminal: noop, syncHash: noop,
     send: (frame) => hostSent.push(frame), resumeDormant: () => assert.fail('must not launch a session'),
   });
@@ -1385,8 +1387,8 @@ test('host selection stack acknowledges and unsnoozes only deliberately opened a
   runInContext(['showEmbeddedSession', 'selectSession', 'applyEmbedView', 'acknowledge', 'persistAcknowledged', 'readSessionViews', 'viewForSession']
     .map(hostFunction).join('\n'), host);
   host.renderSidebar = (s) => { views.push(host.viewForSession(s.sessionId)); input.focus(); };
-  embed = createSessionEmbed({ document: v.document, parts: () => ({ sidebar }),
-    show: (sid, owner) => host.showEmbeddedSession(sid, owner), release: () => { host.selectedSessionId = null; } });
+  embed = createSessionEmbed({ document: v.document, parts: () => ({ sidebar }), cardOf: (sid) => sid,
+    show: (sid, owner) => host.showEmbeddedSession(sid, owner), release: () => { host.selectedSessionId = null; host.selectedCard = null; } });
   const raw = '{ "s1": "chat", "s2": "chat" }';
   v.window.localStorage.setItem('cm-session-view', raw);
   v.view.update(liveGraph([a, b], sessions));
@@ -1397,7 +1399,7 @@ test('host selection stack acknowledges and unsnoozes only deliberately opened a
   v.view.select(a.id);
   assert.deepEqual(views, ['terminal']);
   assert.equal(JSON.parse(v.window.localStorage.getItem('wrangler.acknowledged')).s1, 1000);
-  assert.deepEqual(hostSent.map((frame) => ({ ...frame })), [{ type: 'snooze-clear', sessionId: 's1' }]);
+  assert.deepEqual(hostSent.map((frame) => ({ ...frame })), [{ type: 'snooze-clear', sessionId: 's1', card: 's1' }]);
   v.view.update(liveGraph([{ ...a, state: 'resolved', resolvedReason: 'status-cleared' }, b], sessions));
   assert.equal(v.view.selectedId, b.id);
   assert.equal(v.window.localStorage.getItem('cm-session-view'), raw);

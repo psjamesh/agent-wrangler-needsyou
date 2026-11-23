@@ -13,12 +13,13 @@ If a worker finds a problem here, it messages the orchestrator.
   prefix and the file names. The skill is `needs-you` (renamed from `inbox` in 0.1.6). Only the extension id, and what must equal it
   (directory, `/ext/<id>/` asset paths, `#view=ext:<id>:…` routes, `ext:<id>` frame and event
   types), is `needsyou`.
-- `engines.wranglerApi: "^1.57.0"` in both `package.json` and the manifest.
+- `engines.wranglerApi: "^2.1.0"` in both `package.json` and the manifest.
 - `requires`, identical in both places:
-  `["sessions:read", "tasks:read", "deliver", "board:rebuild"]`. Nothing broadcasts: the client
+  `["sessions:read", "tasks:read", "deliver", "board:rebuild", "schema:zod"]`. Nothing broadcasts: the client
   reads the graph, and handlers use `reply` only for errors. Don't request what isn't used.
 - `defaultEnabled: true`.
-- Dependencies: runtime `zod` only, so `package-lock.json` is mandatory; dev `happy-dom`.
+- No runtime dependencies. Tool schema factories use `host.schema.z` (Zod 4).
+  `package-lock.json` is mandatory; development dependencies include `happy-dom` and ESLint.
 - Root `index.js` only re-exports `server/manifest.js`
   (`export { default, dir } from './server/manifest.js'`).
 - Nothing may import `../index.js` or any agent-wrangler module (see wrangler-squared `AGENTS.md`,
@@ -29,7 +30,7 @@ If a worker finds a problem here, it messages the orchestrator.
 ```js
 export default {
   id: 'needsyou', label: 'Needs you', description, help, author: 'PortSwigger', defaultEnabled: true,
-  engines: { wranglerApi: '^1.57.0' }, dir,
+  engines: { wranglerApi: '^2.1.0' }, dir,
   requires: [...as above],
   stores: { inbox: (bag) => new InboxStore({ file: inboxFile(bag), getSettings: () => bag.settings?.all?.() ?? {}, log: bag.log }) }, // WS-1: bag.settings is a frozen { get, all } view
   tools: inboxTools,           // server/tools/index.js (WS-2)

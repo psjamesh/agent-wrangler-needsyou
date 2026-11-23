@@ -2,7 +2,7 @@
 // Smoke-test a RUNNING dev wrangler that has this extension installed and the
 // three cards scripts/boot-smoke.sh seeds (smoke-human, smoke-worker spawned by
 // it, smoke-archived). boot-smoke.sh boots one; by hand:
-//   AW_REPO=<wrangler checkout> node scripts/dev-smoke.mjs <port>
+//   AW_REPO=<wrangler checkout> AW_SMOKE_DATA_DIR=<seeded data dir> node scripts/dev-smoke.mjs <port>
 // Over the control WS and /mcp, as a board tab and an agent would:
 //   - the extension is announced, enabled, unquarantined, with its 6 handlers,
 //     its client assets are served (and the test fixtures are not), and
@@ -27,14 +27,15 @@ import { pathToFileURL } from 'node:url';
 const port = Number(process.argv[2]);
 if (!port) { console.error('usage: node scripts/dev-smoke.mjs <port>'); process.exit(2); }
 if (!process.env.AW_REPO) { console.error('Set AW_REPO to the agent-wrangler checkout (for its ws module)'); process.exit(2); }
+if (!process.env.AW_SMOKE_DATA_DIR) { console.error('Set AW_SMOKE_DATA_DIR to the data dir seeded by boot-smoke.sh'); process.exit(2); }
 const repo = path.resolve(process.env.AW_REPO.replace(/^~/, os.homedir()));
 const { WebSocket } = await import(pathToFileURL(path.join(repo, 'node_modules/ws/wrapper.mjs')).href);
 
 const ID = 'needsyou';
 const HUMAN = 'smoke-human';
 const WORKER = 'smoke-worker';
-const ARCHIVED = 'smoke-archived';
 const base = `http://localhost:${port}`;
+const tokens = JSON.parse(fs.readFileSync(path.join(process.env.AW_SMOKE_DATA_DIR, 'smoke-tokens.json'), 'utf8'));
 
 const failures = [];
 const expect = (ok, what) => {
@@ -92,7 +93,7 @@ let rpc = 0;
 const mcp = async (body, caller) => {
   const res = await fetch(`${base}/mcp`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', ...(caller ? { 'X-AW-Session': caller } : {}) },
+    headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', ...(caller ? { Authorization: `Bearer ${tokens[caller]}` } : {}) },
     body: JSON.stringify({ jsonrpc: '2.0', id: ++rpc, ...body }),
   });
   return res.json();
@@ -199,8 +200,8 @@ expect(true, 'inbox-set-can-ask null restores the default');
 // 6. An answer reaches host.deliver. The only card it is safe to deliver to
 // in a smoke test is an archived one: delivery is refused and recorded, and
 // nothing is resumed. (A live or dormant card would be pasted into or woken.)
-const archivedAsk = await callTool(ARCHIVED, 'request_human_input', { kind: 'approval', title: 'Smoke: approve?', options: [{ id: 'yes', label: 'Yes' }, { id: 'no', label: 'No' }] });
-const archivedId = archivedAsk.result?.structuredContent?.id;
+// Requests are seeded before boot: the session API refuses archived callers.
+const [archivedId, textId] = JSON.parse(fs.readFileSync(path.join(process.env.AW_SMOKE_DATA_DIR, 'smoke-requests.json'), 'utf8'));
 if (expect(archivedId, 'a request from the archived card is recorded')) {
   await inboxWhere((ib) => itemIn(ib, archivedId), 'the archived card\'s item');
   send({ type: 'inbox-answer', id: archivedId, optionId: 'yes', text: ' after lunch ' });
@@ -217,10 +218,6 @@ if (expect(archivedId, 'a request from the archived card is recorded')) {
   expect(itemIn(ib3, archivedId).resolvedReason === 'dismissed', 'inbox-dismiss closes it');
 }
 
-const textAsk = await callTool(ARCHIVED, 'request_human_input', {
-  kind: 'decision', title: 'Smoke: another approach?', options: [{ id: 'a', label: 'A' }], allow_free_text: false,
-});
-const textId = textAsk.result?.structuredContent?.id;
 if (expect(textId, 'a request with the false compatibility flag is recorded')) {
   await inboxWhere((ib) => itemIn(ib, textId), 'the text-only request');
   send({ type: 'inbox-answer', id: textId, text: ' another approach ' });
