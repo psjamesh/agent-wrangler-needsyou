@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.18
 
 ### Added
 
@@ -15,6 +15,10 @@
 
 ### Changed
 
+- Maintain Needs You at `psjamesh/agent-wrangler-needsyou`, with the original
+  MIT licence and attribution preserved.
+- Remove the request creation rate limit. The per-session open-request cap
+  remains; answering or withdrawing a request immediately frees its slot.
 - Require Agent Wrangler host API `^2.1.0` and the additional `schema:zod`
   capability to build tool schemas with the host’s Zod. The extension has no
   runtime dependencies. Older hosts refuse this version at install or update.

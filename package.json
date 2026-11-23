@@ -1,9 +1,9 @@
 {
   "name": "agent-wrangler-needsyou",
-  "version": "0.1.11",
+  "version": "0.1.18",
   "private": true,
   "type": "module",
-  "description": "A triage queue of the decisions and actions your sessions need from you. An Agent Wrangler extension.",
+  "description": "Maintained Needs You extension for Agent Wrangler: decisions and actions that need your attention.",
   "license": "MIT",
   "scripts": {
     "test": "node --test --import ./test-setup.js 'server/**/*.test.js' 'public/**/*.test.js'",
@@ -26,7 +26,7 @@
     "engines": {
       "wranglerApi": "^2.1.0"
     },
-    "homepage": "https://github.com/portswigger-tim/agent-wrangler-needsyou"
+    "homepage": "https://github.com/psjamesh/agent-wrangler-needsyou"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -39,6 +39,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/portswigger-tim/agent-wrangler-needsyou.git"
+    "url": "https://github.com/psjamesh/agent-wrangler-needsyou.git"
   }
 }

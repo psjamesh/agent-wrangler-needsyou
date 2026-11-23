@@ -16,24 +16,21 @@ other news never appear in it.
 
 ![The Needs you view: the list of waiting requests on the left, and the selected decision on the right with its context, its options and a note field](docs/notes/needs-you.png)
 
+This is the maintained Needs You repository. Needs You was originally created
+by [Tim Birkett](https://github.com/portswigger-tim/agent-wrangler-needsyou).
+The original copyright and MIT licence are preserved.
+
 ## Install the extension
 
 You need Agent Wrangler with host API `^2.1.0`. The current `main` has it.
 
-The repository is private for now. Agent Wrangler gets it with `git` and
-cannot ask you for a password. If the repository is private, do these steps
-first:
-
-1. Run `gh auth login` in a terminal.
-2. Run `gh auth setup-git`.
-
-Then install the extension:
+Install the public extension:
 
 1. Open **Settings**.
 2. Select **Extensions**.
 3. Select **+ Add extension**.
 4. Select **Git URL**.
-5. Paste `https://github.com/portswigger-tim/agent-wrangler-needsyou.git`.
+5. Paste `https://github.com/psjamesh/agent-wrangler-needsyou.git`.
 6. Read the capabilities list. It shows five capabilities (see the table below).
 7. Approve the install.
 8. If Agent Wrangler asks you to restart it, restart it.

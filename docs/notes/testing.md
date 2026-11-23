@@ -127,7 +127,7 @@ the 5 capabilities.
 5. Select **Extensions**.
 6. Select **+ Add extension**.
 7. Select **Git URL**.
-8. Paste `https://github.com/portswigger-tim/agent-wrangler-needsyou.git`.
+8. Paste `https://github.com/psjamesh/agent-wrangler-needsyou.git`.
 9. Look at the consent dialog.
 
 The dialog shows exactly 5 capabilities: `sessions:read`, `tasks:read`,
