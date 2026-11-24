@@ -1,4 +1,20 @@
-import { inboxOf, needsAction, sessionMeta } from './inbox-model.js';
+import { inboxOf, needsAction, sessionName } from './inbox-model.js';
+
+function shortLine(value, max) {
+  const text = String(value ?? '').replace(/\s+/g, ' ').trim();
+  if (text.length <= max) return text;
+  const prefix = text.slice(0, max - 1);
+  const boundary = text[max - 1] === ' ' ? prefix.length : prefix.lastIndexOf(' ');
+  const end = boundary >= max / 2 ? boundary : prefix.length;
+  const cut = /[\uD800-\uDBFF]/.test(text[end - 1]) ? end - 1 : end;
+  return `${text.slice(0, cut).trimEnd()}…`;
+}
+
+function toastBody(graph, item) {
+  const name = sessionName(graph, item.sessionId);
+  const task = shortLine(inboxOf(graph)?.sessions?.[item.sessionId]?.taskName, 60);
+  return task ? `${shortLine(name, 80 - task.length - 3)} · ${task}` : shortLine(name, 80);
+}
 
 export function createInboxToasts(api, openItem) {
   const seen = new Set();
@@ -33,8 +49,8 @@ export function createInboxToasts(api, openItem) {
         try {
           Promise.resolve(api.ui.notify({
             id: item.id,
-            title: item.title,
-            body: sessionMeta(graph, item),
+            title: shortLine(item.title, 120),
+            body: toastBody(graph, item),
             actions: [{ id: 'view', label: 'View request', primary: true }],
           })).then((action) => {
             if (active.get(item.id) !== token) return;

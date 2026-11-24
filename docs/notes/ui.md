@@ -93,7 +93,11 @@ session's next `needs-you` episode anyway.
 
 The **Toast notifications** setting is off unless `toastNotifications === true`.
 The client uses `api.ui.notify` for each newly seen open item, with its title,
-session context and a **View request** action. The action uses the same
+session context and a **View request** action. Toast titles are capped at 120
+characters and session context at 80, with whitespace collapsed and an ellipsis
+at a word boundary where possible. The session name is shortened to leave room
+for the task; task names longer than 60 characters are shortened too. These
+limits apply only to toasts; the view retains its full text. The action uses the same
 `openItem` navigation and pending selection as a card pill. Closing a toast
 changes neither the request nor its read state.
 
