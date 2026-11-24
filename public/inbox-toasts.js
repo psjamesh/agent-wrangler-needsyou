@@ -5,7 +5,9 @@ function shortLine(value, max) {
   if (text.length <= max) return text;
   const prefix = text.slice(0, max - 1);
   const boundary = text[max - 1] === ' ' ? prefix.length : prefix.lastIndexOf(' ');
-  return `${(boundary > 0 ? prefix.slice(0, boundary) : prefix).trimEnd()}…`;
+  const end = boundary >= max / 2 ? boundary : prefix.length;
+  const cut = /[\uD800-\uDBFF]/.test(text[end - 1]) ? end - 1 : end;
+  return `${text.slice(0, cut).trimEnd()}…`;
 }
 
 function toastBody(graph, item) {

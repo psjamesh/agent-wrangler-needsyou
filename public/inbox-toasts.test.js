@@ -55,3 +55,15 @@ test('toast text collapses line breaks and repeated whitespace', () => {
 test('a long session without a task is truncated', () => {
   assert.equal(notify('Title', 's'.repeat(81)).body, `${'s'.repeat(79)}…`);
 });
+
+test('a short opening word does not discard a long URL', () => {
+  const name = `Fix https://example.com/${'path'.repeat(30)}`;
+  assert.equal(notify('Title', name).body, `${name.slice(0, 79)}…`);
+});
+
+test('hard cuts preserve complete emoji', () => {
+  const emoji = String.fromCodePoint(0x1f600);
+  const toast = notify(emoji.repeat(70), emoji.repeat(50));
+  assert.equal(toast.title, `${emoji.repeat(59)}…`);
+  assert.equal(toast.body, `${emoji.repeat(39)}…`);
+});
