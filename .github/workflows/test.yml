@@ -22,7 +22,7 @@ defaults:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -72,7 +72,7 @@ jobs:
   # a commit made with --no-verify, or from a clone without hooks, still can't
   # reach main unchecked.
   gate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       # First, so its pre step locks down egress before any other step runs.
@@ -115,7 +115,7 @@ jobs:
   # started and nothing is delivered to a live card. Fails on a quarantine, a
   # missing frame or tool, or any flow that does not land in graph.inbox.
   boot-smoke:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
       AW_REPO: ${{ github.workspace }}/agent-wrangler

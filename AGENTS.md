@@ -146,6 +146,7 @@ Nothing lands on `main` without passing the gate. It runs in two places:
 `test (22)`, `test (24)`, `gate` and `boot-smoke` checks pass, with no force-push or deletion
 and no bypass. Renaming a CI job means updating the ruleset's required checks too.
 
+CI jobs run on Ubuntu 24.04; the pinned hardening action requires its sudoers parser.
 Every CI job starts with `PortSwigger/safer-runner-action` in enforce mode. It limits egress
 to GitHub's required domains and the hostnames listed in `allowed-domains`. A new download in CI
 needs its host added there. The pinned action does not filter HTTP methods, so allowed hosts
