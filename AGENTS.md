@@ -146,8 +146,11 @@ Nothing lands on `main` without passing the gate. It runs in two places:
 `test (22)`, `test (24)`, `gate` and `boot-smoke` checks pass, with no force-push or deletion
 and no bypass. Renaming a CI job means updating the ruleset's required checks too.
 
-CI jobs run on Ubuntu 24.04; the pinned hardening action requires its sudoers parser.
-Every CI job starts with `PortSwigger/safer-runner-action` in enforce mode. It limits egress
+CI jobs run on Ubuntu 24.04: the pinned action requires classic sudo; Ubuntu 26.04 uses
+sudo-rs, whose parser rejects its sudoers rules.
+Every CI job starts with `PortSwigger/safer-runner-action` in enforce mode. Test and gate
+disable sudo; boot-smoke keeps it for apt, so its egress controls are advisory. All jobs
+disable Docker group access and fail on detected tampering. The action limits egress
 to GitHub's required domains and the hostnames listed in `allowed-domains`. A new download in CI
 needs its host added there. The pinned action does not filter HTTP methods, so allowed hosts
 can receive writes as well as reads. Comment a host above `allowed-domains: |`, never inside
